@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<q2>
+    <server class="org.jpos.q2.iso.QServer" logger="Q2" realm="switch">
+        <attr name="port" type="java.lang.Integer">9000</attr>
+        <channel class="org.jpos.iso.channel.ASCIIChannel" packager="org.jpos.iso.packager.GenericPackager">
+            <property name="packager-config" value="cfg/iso87.xml"/>
+        </channel>
+    </server>
+</q2>
