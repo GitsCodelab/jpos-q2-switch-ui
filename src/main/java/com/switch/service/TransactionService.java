@@ -5,6 +5,8 @@ import com.qswitch.dao.TransactionDAO;
 import com.qswitch.model.Event;
 import com.qswitch.model.Transaction;
 
+import java.util.Optional;
+
 public class TransactionService {
     private final TransactionDAO transactionDAO;
     private final EventDAO eventDAO;
@@ -15,6 +17,12 @@ public class TransactionService {
     }
 
     public Transaction handleAuthorization(String stan, String rrn, long amount) {
+        Optional<Transaction> existing = transactionDAO.findByStanAndRrn(stan, rrn);
+        if (existing.isPresent()) {
+            eventDAO.save(new Event("REPLAY_DETECTED", "Replay detected for stan=" + stan + " rrn=" + rrn));
+            return existing.get();
+        }
+
         Transaction transaction = new Transaction();
         transaction.setMti("0200");
         transaction.setStan(stan);

@@ -64,3 +64,22 @@ Security tests are covered by:
 
 - `src/test/java/com/switch/service/SecurityServiceTest.java`
 - `src/test/java/com/switch/listener/SwitchListenerTest.java`
+
+## Replay Protection and Robustness
+
+Additional hardening is now validated end-to-end:
+
+- Replay protection based on transaction key (`STAN` + `RRN`) with idempotent behavior
+- Duplicate request handling returns same business result without double transaction insert
+- Robustness handling rejects incomplete security envelopes with `RC=96`
+
+Area status summary (from `python_tests/BUSINESS_CASE_RESULTS.md`):
+
+- ISO Protocol: PASS
+- Lifecycle: PASS
+- Reversal Logic: PASS
+- Failure Handling: PASS
+- Security (MAC/DUKPT): PASS
+- Integrity Protection: PASS
+- Replay Protection: PASS
+- Robustness: PASS

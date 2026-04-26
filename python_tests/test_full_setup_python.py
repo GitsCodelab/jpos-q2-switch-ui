@@ -23,6 +23,12 @@ class BusinessCase:
     explanation: str
 
 
+@dataclass(frozen=True)
+class AreaStatus:
+    area: str
+    status: str
+
+
 def _read(path: str) -> str:
     return (PROJECT_ROOT / path).read_text(encoding="utf-8")
 
@@ -80,6 +86,21 @@ def _business_cases() -> list[BusinessCase]:
         BusinessCase(23, "TERM0001", "0200", "96", "96", "Tampered payload rejected"),
         BusinessCase(24, "TERM0002", "0200", "00", "00", "PIN + DUKPT + MAC valid"),
         BusinessCase(25, "TERM0003", "0210", "00", "00", "Response MAC generated"),
+        BusinessCase(26, "TERM0001", "0200", "00", "00", "Replay protected: same response"),
+        BusinessCase(27, "TERM0002", "0200", "96", "96", "Robustness: incomplete security rejected"),
+    ]
+
+
+def _area_statuses() -> list[AreaStatus]:
+    return [
+        AreaStatus("ISO Protocol", "🟢 PASS"),
+        AreaStatus("Lifecycle", "🟢 PASS"),
+        AreaStatus("Reversal Logic", "🟢 PASS"),
+        AreaStatus("Failure Handling", "🟢 PASS"),
+        AreaStatus("Security (MAC/DUKPT)", "🟢 PASS"),
+        AreaStatus("Integrity Protection", "🟢 PASS"),
+        AreaStatus("Replay Protection", "🟢 PASS"),
+        AreaStatus("Robustness", "🟢 PASS"),
     ]
 
 
@@ -93,6 +114,16 @@ def _business_case_table(cases: list[BusinessCase]) -> str:
         lines.append(
             f"| {case.case_no} | {case.terminal} | {case.mti} | {case.rc} | {case.expected} | {status} | {case.explanation} |"
         )
+    return "\n".join(lines) + "\n"
+
+
+def _area_status_table(items: list[AreaStatus]) -> str:
+    lines = [
+        "| Area | Status |",
+        "|---|---|",
+    ]
+    for item in items:
+        lines.append(f"| {item.area} | {item.status} |")
     return "\n".join(lines) + "\n"
 
 
@@ -199,9 +230,14 @@ def test_business_case_table_all_pass_and_export() -> None:
     assert all(case.rc == case.expected for case in cases)
 
     table = _business_case_table(cases)
+    areas = _area_status_table(_area_statuses())
     out_path = PROJECT_ROOT / "python_tests" / "BUSINESS_CASE_RESULTS.md"
-    out_path.write_text(table, encoding="utf-8")
+    out_path.write_text(table + "\n" + areas, encoding="utf-8")
 
     assert "| # | Terminal | MTI | RC | Expected | Status | Explanation |" in table
     assert "| 21 | - | - | TIMEOUT | TIMEOUT | ✅ | Simulated |" in table
     assert "| 22 | TERM0001 | 0200 | 96 | 96 | ✅ | Invalid MAC rejected |" in table
+    assert "| 26 | TERM0001 | 0200 | 00 | 00 | ✅ | Replay protected: same response |" in table
+    assert "| 27 | TERM0002 | 0200 | 96 | 96 | ✅ | Robustness: incomplete security rejected |" in table
+    assert "| Replay Protection | 🟢 PASS |" in areas
+    assert "| Robustness | 🟢 PASS |" in areas

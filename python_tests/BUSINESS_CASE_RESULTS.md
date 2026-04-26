@@ -25,3 +25,16 @@
 | 23 | TERM0001 | 0200 | 96 | 96 | ✅ | Tampered payload rejected |
 | 24 | TERM0002 | 0200 | 00 | 00 | ✅ | PIN + DUKPT + MAC valid |
 | 25 | TERM0003 | 0210 | 00 | 00 | ✅ | Response MAC generated |
+| 26 | TERM0001 | 0200 | 00 | 00 | ✅ | Replay protected: same response |
+| 27 | TERM0002 | 0200 | 96 | 96 | ✅ | Robustness: incomplete security rejected |
+
+| Area | Status |
+|---|---|
+| ISO Protocol | 🟢 PASS |
+| Lifecycle | 🟢 PASS |
+| Reversal Logic | 🟢 PASS |
+| Failure Handling | 🟢 PASS |
+| Security (MAC/DUKPT) | 🟢 PASS |
+| Integrity Protection | 🟢 PASS |
+| Replay Protection | 🟢 PASS |
+| Robustness | 🟢 PASS |

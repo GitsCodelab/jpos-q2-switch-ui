@@ -141,6 +141,53 @@ class SwitchListenerTest {
         assertTrue(source.lastMessage.hasField(64));
     }
 
+    @Test
+    void shouldReturnSameResultForReplayRequest() throws Exception {
+        TransactionDAO transactionDAO = new TransactionDAO();
+        EventDAO eventDAO = new EventDAO();
+        TransactionService transactionService = new TransactionService(transactionDAO, eventDAO);
+        SwitchListener listener = new SwitchListener(transactionService);
+
+        CapturingSource source1 = new CapturingSource();
+        ISOMsg request1 = new ISOMsg();
+        request1.setMTI("0200");
+        request1.set(4, "000000001000");
+        request1.set(11, "321321");
+        request1.set(37, "998877665544");
+
+        CapturingSource source2 = new CapturingSource();
+        ISOMsg request2 = (ISOMsg) request1.clone();
+
+        assertTrue(listener.process(source1, request1));
+        assertTrue(listener.process(source2, request2));
+
+        assertEquals("00", source1.lastMessage.getString(39));
+        assertEquals("00", source2.lastMessage.getString(39));
+        assertEquals(source1.lastMessage.getString(11), source2.lastMessage.getString(11));
+        assertEquals(source1.lastMessage.getString(37), source2.lastMessage.getString(37));
+        assertEquals(1, transactionDAO.count());
+    }
+
+    @Test
+    void shouldRejectIncompleteSecurityEnvelopeAsRobustnessRule() throws Exception {
+        TransactionService transactionService = new TransactionService(new TransactionDAO(), new EventDAO());
+        SwitchListener listener = new SwitchListener(transactionService);
+
+        CapturingSource source = new CapturingSource();
+        ISOMsg request = new ISOMsg();
+        request.setMTI("0200");
+        request.set(4, "000000001000");
+        request.set(11, "121212");
+        request.set(37, "121212121212");
+        request.set(64, "0011223344556677");
+
+        boolean processed = listener.process(source, request);
+
+        assertTrue(processed);
+        assertEquals("0210", source.lastMessage.getMTI());
+        assertEquals("96", source.lastMessage.getString(39));
+    }
+
     private ISOMsg secureRequest(String mti, String stan, String rrn, String amount, String pinBlockHex, String ksn) throws Exception {
         ISOMsg request = new ISOMsg();
         request.setMTI(mti);
