@@ -24,3 +24,13 @@ mvn clean package
 ```
 
 The package phase writes `lib/switch-core.jar`.
+
+## Python Test Layer (Validation Only)
+
+Business logic remains in Java (jPOS + Q2). Python is used only to validate setup and business-case expectations.
+
+```bash
+/home/samehabib/jpos-q2-switch/.venv/bin/python -m pytest -q python_tests
+```
+
+This command runs Python-based validation scenarios mapped to the business-case matrix.
