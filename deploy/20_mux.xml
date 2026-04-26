@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<q2>
-    <mux name="main-mux" class="org.jpos.q2.iso.QMUX" logger="Q2" realm="mux">
-        <property name="in" value="acquirer-channel"/>
-        <property name="out" value="acquirer-channel"/>
-    </mux>
-</q2>

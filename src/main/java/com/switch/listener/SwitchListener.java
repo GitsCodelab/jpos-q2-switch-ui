@@ -1,5 +1,7 @@
 package com.qswitch.listener;
 
+import com.qswitch.dao.EventDAO;
+import com.qswitch.dao.TransactionDAO;
 import com.qswitch.model.Transaction;
 import com.qswitch.service.TransactionService;
 import org.jpos.iso.ISOException;
@@ -9,6 +11,10 @@ import org.jpos.iso.ISOSource;
 
 public class SwitchListener implements ISORequestListener {
     private final TransactionService transactionService;
+
+    public SwitchListener() {
+        this(new TransactionService(new TransactionDAO(), new EventDAO()));
+    }
 
     public SwitchListener(TransactionService transactionService) {
         this.transactionService = transactionService;

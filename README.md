@@ -11,6 +11,11 @@ This setup is rebuilt on top of the jPOS-EE stack (`org.jpos.ee`) and keeps your
 - `src/test/java/com/switch`: unit tests
 - `docker/`: runtime container image definition
 
+Current active deploy files:
+
+- `deploy/10_channel.xml`
+- `deploy/30_switch.xml`
+
 ## Prerequisites
 
 - Java 17+
@@ -34,3 +39,7 @@ Business logic remains in Java (jPOS + Q2). Python is used only to validate setu
 ```
 
 This command runs Python-based validation scenarios mapped to the business-case matrix.
+
+Python test execution also generates:
+
+- `python_tests/BUSINESS_CASE_RESULTS.md`
