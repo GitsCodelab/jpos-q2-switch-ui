@@ -14,6 +14,7 @@ This setup is rebuilt on top of the jPOS-EE stack (`org.jpos.ee`) and keeps your
 Current active deploy files:
 
 - `deploy/10_channel.xml`
+- `deploy/20_mux.xml`
 - `deploy/30_switch.xml`
 
 ## Prerequisites
@@ -94,3 +95,22 @@ Area status summary (from `python_tests/BUSINESS_CASE_RESULTS.md`):
 - Integrity Protection: PASS
 - Replay Protection: PASS
 - Robustness: PASS
+
+## Routing Architecture
+
+Current runtime path:
+
+- ATM
+- QServer
+- SwitchListener
+- QMUX (`acquirer-mux`)
+- Channel (`acquirer-channel`)
+- Upstream acquirer / scheme
+
+MUX routing is configured in:
+
+- `deploy/20_mux.xml`
+
+Channel packager property is configured as:
+
+- `packager-config=cfg/iso87.xml`

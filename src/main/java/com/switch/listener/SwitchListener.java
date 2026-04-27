@@ -9,8 +9,11 @@ import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOMsg;
 import org.jpos.iso.ISORequestListener;
 import org.jpos.iso.ISOSource;
+import org.jpos.q2.QBeanSupport;
+import org.jpos.q2.iso.QMUX;
+import org.jpos.util.NameRegistrar;
 
-public class SwitchListener implements ISORequestListener {
+public class SwitchListener extends QBeanSupport implements ISORequestListener {
     private final TransactionService transactionService;
     private final SecurityService securityService;
 
@@ -45,6 +48,12 @@ public class SwitchListener implements ISORequestListener {
                 return true;
             }
 
+            ISOMsg muxResponse = requestThroughMux(request);
+            if (muxResponse != null) {
+                source.send(muxResponse);
+                return true;
+            }
+
             Transaction result = transactionService.handleAuthorization(stan, rrn, amount);
 
             ISOMsg response = (ISOMsg) request.clone();
@@ -71,6 +80,24 @@ public class SwitchListener implements ISORequestListener {
             }
             return true;
 
+        }
+    }
+
+    private ISOMsg requestThroughMux(ISOMsg request) {
+        try {
+            QMUX mux = (QMUX) NameRegistrar.get("mux.acquirer-mux");
+            ISOMsg response = mux.request((ISOMsg) request.clone(), 30000);
+            if (response == null) {
+                ISOMsg timeout = (ISOMsg) request.clone();
+                timeout.setMTI(buildResponseMTI(request.getMTI()));
+                timeout.set(39, "91");
+                return timeout;
+            }
+            return response;
+        } catch (NameRegistrar.NotFoundException ignored) {
+            return null;
+        } catch (Exception e) {
+            return null;
         }
     }
 
