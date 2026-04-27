@@ -60,7 +60,17 @@ public class SwitchListener implements ISORequestListener {
             source.send(response);
             return true;
         } catch (Exception e) {
-            return false;
+            // return false;
+            try {
+                ISOMsg resp = (ISOMsg) request.clone();
+                resp.setMTI(buildResponseMTI(request.getMTI()));
+                resp.set(39, "96");
+                source.send(resp);
+            } catch (Exception ignored) {
+                return false;
+            }
+            return true;
+
         }
     }
 

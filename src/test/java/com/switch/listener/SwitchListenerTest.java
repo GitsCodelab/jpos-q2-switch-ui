@@ -76,7 +76,7 @@ class SwitchListenerTest {
     }
 
     @Test
-    void shouldReturnFalseWhenAmountIsInvalid() throws Exception {
+    void shouldRespondWith96WhenAmountIsInvalid() throws Exception {
         TransactionService transactionService = new TransactionService(new TransactionDAO(), new EventDAO());
         SwitchListener listener = new SwitchListener(transactionService);
 
@@ -89,8 +89,9 @@ class SwitchListenerTest {
 
         boolean processed = listener.process(source, request);
 
-        assertFalse(processed);
-        assertNull(source.lastMessage);
+        assertTrue(processed);
+        assertEquals("0210", source.lastMessage.getMTI());
+        assertEquals("96", source.lastMessage.getString(39));
     }
 
     @Test

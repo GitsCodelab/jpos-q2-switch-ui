@@ -1,0 +1,14 @@
+services:
+  switch:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: jpos-q2-switch:latest
+    container_name: jpos-q2-switch
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./cfg:/app/cfg:ro
+      - ./deploy:/app/deploy:ro
+      - ~/.m2:/root/.m2
+    restart: unless-stopped

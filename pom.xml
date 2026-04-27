@@ -67,6 +67,9 @@
                 <version>3.5.0</version>
                 <configuration>
                     <useModulePath>false</useModulePath>
+                    <environmentVariables>
+                        <BASE_DERIVATION_KEY>ABCDEF1234567890</BASE_DERIVATION_KEY>
+                    </environmentVariables>
                 </configuration>
             </plugin>
 
