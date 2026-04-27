@@ -68,7 +68,7 @@
                 <configuration>
                     <useModulePath>false</useModulePath>
                     <environmentVariables>
-                        <BASE_DERIVATION_KEY>ABCDEF1234567890</BASE_DERIVATION_KEY>
+                        <BASE_DERIVATION_KEY>0123456789ABCDEFFEDCBA9876543210</BASE_DERIVATION_KEY>
                     </environmentVariables>
                 </configuration>
             </plugin>
