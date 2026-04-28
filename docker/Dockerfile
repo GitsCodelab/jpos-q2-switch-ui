@@ -21,6 +21,8 @@ COPY src /app/src
 COPY cfg /app/cfg
 COPY deploy /app/deploy
 
+RUN mkdir -p /app/logs
+
 RUN mvn -q -DskipTests package dependency:build-classpath -Dmdep.outputFile=.cp.txt
 
-CMD ["sh", "-lc", "java -cp \"target/classes:$(cat .cp.txt)\" org.jpos.q2.Q2 -d deploy -n Q2-DOCKER"]
+CMD ["sh", "-lc", "java -Dlog4j2.configurationFile=cfg/log4j2.xml -cp \"target/classes:$(cat .cp.txt)\" org.jpos.q2.Q2 -d deploy -n Q2-DOCKER"]
