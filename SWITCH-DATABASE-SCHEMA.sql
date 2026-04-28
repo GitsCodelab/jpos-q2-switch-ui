@@ -1,4 +1,4 @@
-```sql
+
 -- =========================================================
 -- SWITCH DATABASE SCHEMA
 -- File: switch-db.sql
@@ -94,4 +94,4 @@ CREATE INDEX idx_meta_stan ON transaction_meta(stan);
 -- =========================
 -- END OF FILE
 -- =========================
-```
+

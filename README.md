@@ -92,6 +92,29 @@ Notes:
 - With HEX logging enabled, the switch logs summary lines, a safe ISO dump, and raw packed ISO HEX.
 - Raw HEX can include sensitive data. Turn it off outside troubleshooting.
 
+PostgreSQL 18+ note:
+
+- Compose now mounts PostgreSQL storage at `/var/lib/postgresql` (not `/var/lib/postgresql/data`) to match the official Postgres 18+ image behavior.
+- If you previously used an older layout and see an error mentioning `/var/lib/postgresql/data (unused mount/volume)`, run this one-time reset:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+docker compose down -v
+docker volume rm jpos-q2-switch_postgres-data 2>/dev/null || true
+docker compose up --build -d
+```
+
+- This reset removes old PostgreSQL container data. If you need existing data, migrate it with `pg_upgrade` before removing volumes.
+
+Switch database environment variables (in `docker-compose.yml`):
+
+- `DB_HOST=jpos-postgresql`
+- `DB_PORT=5432`
+- `DB_NAME=jpos`
+- `DB_USER=postgres`
+- `DB_PASSWORD=postgres`
+- `DB_URL=jdbc:postgresql://jpos-postgresql:5432/jpos`
+
 To disable HEX logging, edit `docker-compose.yml` and clear the `JAVA_OPTS` value:
 
 ```yaml
