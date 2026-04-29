@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Card, Row, Col, Statistic, Table, message, Spin, Input, Button, Space } from 'antd'
+import { Card, Row, Col, Statistic, Table, message, Spin, DatePicker, Button, Space } from 'antd'
 import { ArrowUpOutlined } from '@ant-design/icons'
+import dayjs from 'dayjs'
 import { dashboardAPI, transactionAPI } from '../services/api'
 
 export default function Dashboard() {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = dayjs()
   const [metrics, setMetrics] = useState(null)
   const [statusRows, setStatusRows] = useState([])
   const [volumeRows, setVolumeRows] = useState([])
@@ -19,9 +20,10 @@ export default function Dashboard() {
   const fetchDashboardData = async (selectedDate = statusDate) => {
     setLoading(true)
     try {
+      const formattedDate = dayjs(selectedDate).format('YYYY-MM-DD')
       const [summaryRes, statusRes, volumeRes, txRes] = await Promise.all([
         dashboardAPI.getSummary().catch(() => ({ data: {} })),
-        dashboardAPI.getStatus({ as_of: selectedDate }).catch(() => ({ data: [] })),
+        dashboardAPI.getStatus({ as_of: formattedDate }).catch(() => ({ data: [] })),
         dashboardAPI.getVolume().catch(() => ({ data: [] })),
         transactionAPI.list({ limit: 10 }).catch(() => ({ data: [] })),
       ])
@@ -217,11 +219,11 @@ export default function Dashboard() {
               >
                 <div className="card-title" style={{ marginBottom: 0 }}>Status Breakdown</div>
                 <Space>
-                  <Input
+                  <DatePicker
                     size="small"
-                    type="date"
                     value={statusDate}
-                    onChange={(e) => setStatusDate(e.target.value)}
+                    format="YYYY-MM-DD"
+                    onChange={(value) => setStatusDate(value || today)}
                     style={{ width: 150 }}
                   />
                   <Button size="small" type="primary" onClick={() => fetchDashboardData(statusDate)}>

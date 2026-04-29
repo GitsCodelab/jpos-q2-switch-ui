@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Tabs } from 'antd'
+import { Card, Table, Button, Space, Modal, Form, Input, InputNumber, message, Select, Tabs } from 'antd'
 import { SearchOutlined, EyeOutlined } from '@ant-design/icons'
 import { transactionAPI } from '../services/api'
 
@@ -11,6 +11,7 @@ export default function Transactions() {
   const [events, setEvents] = useState([])
   const [eventsLoading, setEventsLoading] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
+  const [pageSize, setPageSize] = useState(50)
 
   useEffect(() => {
     fetchTransactions()
@@ -19,12 +20,14 @@ export default function Transactions() {
   const fetchTransactions = async (params = {}) => {
     setLoading(true)
     try {
+      const normalizedLimit = Math.min(Math.max(Number(params.limit || 50), 1), 500)
+      setPageSize(normalizedLimit)
       const hasDirectSearch = !!(params.stan || params.rrn)
       const response = hasDirectSearch
         ? await transactionAPI.search({
             stan: params.stan || undefined,
             rrn: params.rrn || undefined,
-            limit: params.limit || 50,
+            limit: normalizedLimit,
             offset: 0,
           })
         : await transactionAPI.list({
@@ -32,7 +35,7 @@ export default function Transactions() {
             scheme: params.scheme || undefined,
             issuer_id: params.issuer_id || undefined,
             settled: typeof params.settled === 'boolean' ? params.settled : undefined,
-            limit: params.limit || 50,
+            limit: normalizedLimit,
             offset: 0,
           })
       setTransactions(Array.isArray(response.data) ? response.data : [])
@@ -210,7 +213,7 @@ export default function Transactions() {
               />
             </Form.Item>
             <Form.Item label="Limit" name="limit" initialValue={50}>
-              <Input size="small" placeholder="50" />
+              <InputNumber size="small" min={1} max={500} style={{ width: '100%' }} />
             </Form.Item>
           </div>
           <div>
@@ -218,7 +221,7 @@ export default function Transactions() {
               <Button type="primary" size="small" icon={<SearchOutlined />} onClick={handleSearch}>
                 Search
               </Button>
-              <Button size="small" onClick={() => { form.resetFields(); fetchTransactions(); }}>
+              <Button size="small" onClick={() => { form.resetFields(); fetchTransactions({ limit: 50 }); }}>
                 Reset
               </Button>
             </Space>
@@ -235,7 +238,7 @@ export default function Transactions() {
           loading={loading}
           size="small"
           bordered
-          pagination={{ pageSize: 50, position: ['bottomCenter'] }}
+          pagination={{ pageSize, position: ['bottomCenter'] }}
         />
       </Card>
 

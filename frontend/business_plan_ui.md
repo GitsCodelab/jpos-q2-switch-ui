@@ -102,3 +102,8 @@ A clean, professional **Switch Control Panel UI** for operators.
 
 - Frontend pages now match backend payload shapes (direct list responses), so data appears correctly.
 - Settlement Run is validated against backend JWT flow.
+
+
+------
+phase new 2 
+add to Status Breakdown table filter by date and make the default todate
