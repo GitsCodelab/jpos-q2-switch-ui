@@ -34,6 +34,19 @@ npm run build
 npm run preview
 ```
 
+If your environment uses SSL interception and install is slow/stuck at `idealTree`, use the project npm config in `.npmrc`:
+
+- `strict-ssl=false`
+- `progress=false`
+- `audit=false`
+- `fund=false`
+
+You can then install with:
+
+```bash
+npm install --no-audit --no-fund
+```
+
 ### Environment Variables
 
 Create `.env.local` from `.env.example`:

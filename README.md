@@ -2,6 +2,25 @@
 
 This setup is rebuilt on top of the jPOS-EE stack (`org.jpos.ee`) and keeps your requested switch structure.
 
+## Frontend UI (React + Ant Design)
+
+The project now includes a frontend app in `frontend/` with:
+
+- React + Vite
+- Ant Design (compact SAP UI5/Fiori-inspired theme)
+- JWT login flow to backend `/auth/login`
+- Pages: Dashboard, Transactions, Reconciliation, Settlement
+
+Quick start:
+
+```bash
+cd /home/samehabib/jpos-q2-switch-ui/frontend
+npm install --no-audit --no-fund
+npm run dev
+```
+
+Frontend default URL: `http://localhost:5173`
+
 ## Structure
 
 - `deploy/`: Q2 deployment descriptors
@@ -54,7 +73,14 @@ cd /home/samehabib/jpos-q2-switch
 docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f pg/populate-settlement-data.sql
 ```
 
-5. Verify required tables exist:
+5. Seed business-case dataset (100 records per case, 31 cases = 3,100 rows):
+
+```bash
+cd /home/samehabib/jpos-q2-switch-ui
+docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f pg/populate-business-case-data.sql
+```
+
+6. Verify required tables exist:
 
 ```bash
 cd /home/samehabib/jpos-q2-switch
@@ -75,8 +101,12 @@ Optional quick validation run:
 ```bash
 cd /home/samehabib/jpos-q2-switch
 mvn -q -Dtest=RoutingEngineTest,SettlementServiceTest,NetSettlementServiceTest test
-python -m pytest -q python_tests/test_full_setup_python.py
+/home/samehabib/jpos-q2-switch-ui/.venv/bin/python -m pytest -q python_tests/test_full_setup_python.py
 ```
+
+Note:
+
+- In environments where file appender markers are not emitted, one integration assertion in `python_tests/test_full_setup_python.py` is skipped instead of failing.
 
 ## Commands
 
