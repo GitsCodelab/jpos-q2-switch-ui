@@ -22,6 +22,62 @@ Current active deploy files:
 - Java 17+
 - Maven 3.9+
 
+## First-Time DB Setup
+
+Use this once on a fresh machine/workspace or after cleaning volumes.
+
+1. Start PostgreSQL and switch services:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+docker compose up -d
+```
+
+2. Initialize base schema:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+docker compose exec -T jpos-postgresql psql -U postgres -f /docker-entrypoint-initdb.d/db.sql
+```
+
+3. Apply Phase 4 migration (BIN routing + settlement + net settlement):
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f pg/migration-phase4.sql
+```
+
+4. Seed settlement/routing sample data (recommended for tests):
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f pg/populate-settlement-data.sql
+```
+
+5. Verify required tables exist:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+docker compose exec -T jpos-postgresql psql -U postgres -d jpos -c "\dt"
+```
+
+Expected core tables include:
+
+- `transactions`
+- `transaction_events`
+- `bins`
+- `terminals`
+- `settlement_batches`
+- `net_settlement`
+
+Optional quick validation run:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+mvn -q -Dtest=RoutingEngineTest,SettlementServiceTest,NetSettlementServiceTest test
+python -m pytest -q python_tests/test_full_setup_python.py
+```
+
 ## Commands
 
 ```bash
