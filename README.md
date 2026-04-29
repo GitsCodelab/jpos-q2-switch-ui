@@ -161,6 +161,31 @@ Or use a **device profile** with predefined fields for realistic test scenarios:
 
 Available profiles: `atm`, `pos`, `reversal`, `fraud` (all support further `--field` overrides)
 
+## Automated Fraud End-to-End (One Command)
+
+Run the full architecture validation in one step:
+
+- POS/ATM style request to Switch (Java/jPOS)
+- Fraud decision by Java Fraud Engine
+- Persistence to PostgreSQL (`transaction_events`)
+- Backend API validation (`/fraud/alerts`, `/fraud/flagged-transactions`)
+- Frontend reachability check (`http://localhost:5173`)
+
+```bash
+cd /home/samehabib/jpos-q2-switch-ui
+bash run-fraud-e2e.sh
+```
+
+What the script does:
+
+1. Starts/rebuilds required containers (`jpos-postgresql`, `switch`, `jpos-backend`, `jpos-frontend`)
+2. Waits for backend/frontend readiness
+3. Generates `.cp.txt` if missing
+4. Sends a high-amount routable ISO transaction with unique STAN/RRN
+5. Asserts DB persisted REQUEST + FRAUD event
+6. Asserts backend fraud endpoints include the same STAN
+7. Confirms frontend is reachable
+
 SQL seed scripts are still available for static dataset preparation, but they do not generate runtime traffic.
 
 Note:

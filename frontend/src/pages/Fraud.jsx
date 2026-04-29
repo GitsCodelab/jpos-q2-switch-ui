@@ -48,23 +48,67 @@ export default function Fraud() {
 
   const loadAll = async () => {
     setLoading(true)
+    const labels = ['dashboard', 'alerts', 'rules', 'blacklist', 'cases', 'flagged-transactions']
+    const requests = [
+      fraudAPI.getDashboard(),
+      fraudAPI.getAlerts(),
+      fraudAPI.getRules(),
+      fraudAPI.getBlacklist(),
+      fraudAPI.getCases(),
+      fraudAPI.getFlaggedTransactions(),
+    ]
+
     try {
-      const [dashRes, alertRes, ruleRes, blRes, caseRes, txRes] = await Promise.all([
-        fraudAPI.getDashboard(),
-        fraudAPI.getAlerts(),
-        fraudAPI.getRules(),
-        fraudAPI.getBlacklist(),
-        fraudAPI.getCases(),
-        fraudAPI.getFlaggedTransactions(),
-      ])
-      setDashboard(dashRes.data)
-      setAlerts(alertRes.data)
-      setRules(ruleRes.data)
-      setBlacklist(blRes.data)
-      setCases(caseRes.data)
-      setFlaggedTransactions(txRes.data)
-    } catch (error) {
-      message.error(error?.response?.data?.message || 'Failed to load fraud module data')
+      const results = await Promise.allSettled(requests)
+      const failedSections = []
+
+      const [dashRes, alertRes, ruleRes, blRes, caseRes, txRes] = results
+
+      if (dashRes.status === 'fulfilled') {
+        setDashboard(dashRes.value.data)
+      } else {
+        setDashboard(null)
+        failedSections.push(labels[0])
+      }
+
+      if (alertRes.status === 'fulfilled') {
+        setAlerts(alertRes.value.data)
+      } else {
+        setAlerts([])
+        failedSections.push(labels[1])
+      }
+
+      if (ruleRes.status === 'fulfilled') {
+        setRules(ruleRes.value.data)
+      } else {
+        setRules([])
+        failedSections.push(labels[2])
+      }
+
+      if (blRes.status === 'fulfilled') {
+        setBlacklist(blRes.value.data)
+      } else {
+        setBlacklist([])
+        failedSections.push(labels[3])
+      }
+
+      if (caseRes.status === 'fulfilled') {
+        setCases(caseRes.value.data)
+      } else {
+        setCases([])
+        failedSections.push(labels[4])
+      }
+
+      if (txRes.status === 'fulfilled') {
+        setFlaggedTransactions(txRes.value.data)
+      } else {
+        setFlaggedTransactions([])
+        failedSections.push(labels[5])
+      }
+
+      if (failedSections.length > 0) {
+        message.warning(`Some fraud sections could not load: ${failedSections.join(', ')}`)
+      }
     } finally {
       setLoading(false)
     }

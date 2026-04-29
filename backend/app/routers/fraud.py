@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -28,6 +29,15 @@ router = APIRouter(prefix="/fraud", tags=["Fraud"])
 
 FLAG_THRESHOLD = 50
 DECLINE_THRESHOLD = 80
+
+
+def _is_missing_table_error(exc: Exception) -> bool:
+    message = str(getattr(exc, "orig", exc)).lower()
+    return (
+        "does not exist" in message
+        or "undefinedtable" in message
+        or "no such table" in message
+    )
 
 
 @router.get("/dashboard", response_model=FraudDashboardOut, summary="Fraud dashboard KPIs")
@@ -185,7 +195,12 @@ def action_alert(
 
 @router.get("/rules", response_model=List[FraudRuleOut], summary="List fraud rules")
 def list_rules(db: Session = Depends(get_db)):
-    return db.query(FraudRule).order_by(FraudRule.id.asc()).all()
+    try:
+        return db.query(FraudRule).order_by(FraudRule.id.asc()).all()
+    except (ProgrammingError, OperationalError) as exc:
+        if _is_missing_table_error(exc):
+            return []
+        raise
 
 
 @router.post("/rules", response_model=FraudRuleOut, summary="Create fraud rule")
@@ -214,7 +229,12 @@ def create_rule(
 
 @router.get("/blacklist", response_model=List[BlacklistEntryOut], summary="List blacklist entries")
 def list_blacklist(db: Session = Depends(get_db)):
-    return db.query(BlacklistEntry).order_by(BlacklistEntry.created_at.desc()).all()
+    try:
+        return db.query(BlacklistEntry).order_by(BlacklistEntry.created_at.desc()).all()
+    except (ProgrammingError, OperationalError) as exc:
+        if _is_missing_table_error(exc):
+            return []
+        raise
 
 
 @router.post("/blacklist", response_model=BlacklistEntryOut, summary="Create blacklist entry")
@@ -242,7 +262,12 @@ def create_blacklist(
 
 @router.get("/cases", response_model=List[FraudCaseOut], summary="List fraud cases")
 def list_cases(db: Session = Depends(get_db)):
-    return db.query(FraudCase).order_by(FraudCase.created_at.desc()).all()
+    try:
+        return db.query(FraudCase).order_by(FraudCase.created_at.desc()).all()
+    except (ProgrammingError, OperationalError) as exc:
+        if _is_missing_table_error(exc):
+            return []
+        raise
 
 
 @router.post("/cases", response_model=FraudCaseOut, summary="Create fraud case")
@@ -272,8 +297,14 @@ def fraud_check(payload: FraudCheckIn, db: Session = Depends(get_db)):
     pan = (payload.pan or "").strip()
     bin_value = pan[:6] if len(pan) >= 6 else ""
 
-    blacklist_q = db.query(BlacklistEntry).filter(BlacklistEntry.is_active == True)
-    blacklist_rows = blacklist_q.all()
+    try:
+        blacklist_q = db.query(BlacklistEntry).filter(BlacklistEntry.is_active == True)
+        blacklist_rows = blacklist_q.all()
+    except (ProgrammingError, OperationalError) as exc:
+        if _is_missing_table_error(exc):
+            blacklist_rows = []
+        else:
+            raise
     for row in blacklist_rows:
         if row.entry_type == "TERMINAL" and terminal and row.value == terminal:
             triggers.append("BLACKLIST_TERMINAL")
@@ -285,7 +316,13 @@ def fraud_check(payload: FraudCheckIn, db: Session = Depends(get_db)):
             triggers.append("BLACKLIST_PAN")
             risk_score = max(risk_score, DECLINE_THRESHOLD)
 
-    active_rules = db.query(FraudRule).filter(FraudRule.is_active == True).all()
+    try:
+        active_rules = db.query(FraudRule).filter(FraudRule.is_active == True).all()
+    except (ProgrammingError, OperationalError) as exc:
+        if _is_missing_table_error(exc):
+            active_rules = []
+        else:
+            raise
     for rule in active_rules:
         rule_type = rule.rule_type.upper()
 
