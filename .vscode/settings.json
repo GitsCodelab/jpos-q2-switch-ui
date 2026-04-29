@@ -4,6 +4,23 @@
         "/^cd /home/samehabib/jpos-q2-switch && mvn -q -Dtest=RoutingEngineTest,TransactionServiceFraudTest,ReconciliationServiceTest,AutoReversalServiceTest,SettlementServiceTest test$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^cd /home/samehabib/jpos-q2-switch && python -m pytest python_tests/test_full_setup_python\\.py -v 2>&1 \\| tail -40$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd /home/samehabib/jpos-q2-switch && docker compose exec -T jpos-postgresql psql -U postgres -d jpos -c \"\\\\dt\" 2>&1 \\| grep -E \"public\\.\\*table\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd /home/samehabib/jpos-q2-switch && docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f /dev/stdin < pg/migration-phase4\\.sql 2>&1 \\| tail -30$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "docker compose": true,
+        "/^cd /home/samehabib/jpos-q2-switch && python -m pytest python_tests/test_full_setup_python\\.py -v 2>&1 \\| tail -50$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

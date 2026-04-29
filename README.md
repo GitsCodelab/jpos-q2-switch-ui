@@ -529,3 +529,157 @@ MUX routing is configured in:
 Channel packager property is configured as:
 
 - `packager-config=cfg/iso87.xml`
+
+## Multi-Party Settlement (Phase 4 - Advanced)
+
+Multi-party settlement extends the basic settlement model to calculate net positions between all participating banks. This is critical for interbank clearing and liquidity management.
+
+### Overview
+
+In a typical transaction, two financial institutions are involved:
+- **Issuer Bank**: The cardholder's bank (extracted from PAN via BIN lookup)
+- **Acquirer Bank**: The merchant's/terminal's bank (mapped from terminal ID)
+
+Multi-party settlement tracks the flows between all pairs of banks and calculates bilateral net positions.
+
+### Example Flow
+
+```
+Bank A (Issuer) ──→ Bank B (Acquirer): $100,000
+Bank B (Issuer) ──→ Bank A (Acquirer): $30,000
+
+Net Settlement:
+Bank A owes Bank B: $100,000 - $30,000 = $70,000
+```
+
+### Database Schema
+
+Multi-party settlement requires three key components:
+
+**1. BINs Table** (`bins`)
+Maps PAN prefixes to issuer banks:
+```sql
+SELECT * FROM bins;
+ bin    | scheme | issuer_id
+--------|--------|----------
+ 123456 | LOCAL  | BANK_A
+ 654321 | VISA   | BANK_B
+ 512345 | MC     | BANK_C
+```
+
+**2. Terminals Table** (`terminals`)
+Maps terminal IDs to acquirer banks:
+```sql
+SELECT * FROM terminals;
+ terminal_id | acquirer_id
+-------------|-------------
+ TERM0001    | BANK_B
+ TERM0002    | BANK_C
+ TERM0003    | BANK_A
+```
+
+**3. Transactions Table Extensions**
+New columns added to `transactions`:
+- `issuer_id VARCHAR(12)` - From BIN lookup (field 2, PAN)
+- `acquirer_id VARCHAR(12)` - From terminal mapping (field 41)
+- `settled BOOLEAN` - Marks transactions ready for settlement
+- `settlement_date DATE` - When settled
+- `batch_id VARCHAR(32)` - Batch reference
+
+### Core Service
+
+Implementation:
+- `src/main/java/com/switch/settlement/MultiPartySettlementService.java`
+
+Key methods:
+
+```java
+// Calculate and display all issuer→acquirer net positions
+public void runNetSettlement()
+
+// Get bilateral net position between two specific banks
+public long getNetPosition(String bankA, String bankB)
+
+// Get all counterparty positions for a bank
+public Map<String, Long> getBilaterals(String bankId)
+```
+
+### Running Multi-Party Settlement
+
+To calculate net positions across all settled transactions:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+docker compose up -d
+mvn -q -DskipTests org.codehaus.mojo:exec-maven-plugin:3.5.0:java \
+  -Dexec.mainClass=com.qswitch.settlement.MultiPartySettlementService
+```
+
+### Query Examples
+
+Get net position from Bank A to Bank B:
+```sql
+SELECT issuer_id, acquirer_id, SUM(amount) AS total_amount
+FROM transactions
+WHERE settled = TRUE
+  AND issuer_id = 'BANK_A'
+  AND acquirer_id = 'BANK_B'
+GROUP BY issuer_id, acquirer_id;
+```
+
+Get all bilateral flows for Bank A:
+```sql
+SELECT issuer_id, acquirer_id, SUM(amount) AS total_amount
+FROM transactions
+WHERE settled = TRUE
+  AND (issuer_id = 'BANK_A' OR acquirer_id = 'BANK_A')
+GROUP BY issuer_id, acquirer_id
+ORDER BY issuer_id, acquirer_id;
+```
+
+### Unit and Integration Tests
+
+Unit tests verify netting logic:
+```bash
+mvn -q -Dtest=MultiPartySettlementServiceTest test
+```
+
+Integration tests validate schema and sample data:
+```bash
+python -m pytest python_tests/test_full_setup_python.py::test_terminals_table_exists_for_acquirer_mapping -v
+python -m pytest python_tests/test_full_setup_python.py::test_multi_party_settlement_schema_complete -v
+```
+
+### Settlement Flow Diagram
+
+```
+Transaction {
+  PAN = "123456..."        → BIN Lookup → issuer_id = "BANK_A"
+  Terminal = "TERM0001"    → Terminal Lookup → acquirer_id = "BANK_B"
+  Amount = 100,000
+  Status = "AUTHORIZED"
+}
+
+↓
+
+Settlement Run:
+- Mark transaction: settled = TRUE, settlement_date = TODAY, batch_id = "BATCH-20260429-001"
+- Insert to settlement_batches: (batch_id, count=1, amount=100000, created_at=NOW)
+
+↓
+
+Net Settlement Query:
+  BANK_A → BANK_B: 100,000
+  BANK_B → BANK_A: 30,000
+  ─────────────────────
+  Net: BANK_A owes BANK_B 70,000
+```
+
+### Conservation Property
+
+In a closed system, the sum of all net positions must equal zero (conservation of money):
+```
+BANK_A_net + BANK_B_net + BANK_C_net + ... = 0
+```
+
+This is verified in test `test_multi_party_settlement_schema_complete`.

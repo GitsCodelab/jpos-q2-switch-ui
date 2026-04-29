@@ -17,6 +17,7 @@ public class Transaction {
     private String finalStatus;
     private boolean reversal;
     private String issuerId;
+    private String acquirerId;
     private String scheme;
     private int retryCount;
     private boolean settled;
@@ -122,6 +123,14 @@ public class Transaction {
 
     public void setIssuerId(String issuerId) {
         this.issuerId = issuerId;
+    }
+
+    public String getAcquirerId() {
+        return acquirerId;
+    }
+
+    public void setAcquirerId(String acquirerId) {
+        this.acquirerId = acquirerId;
     }
 
     public String getScheme() {

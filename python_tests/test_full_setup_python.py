@@ -961,3 +961,108 @@ def test_transactions_table_has_routing_columns() -> None:
     assert "settled" in column_map, "Missing settled column in transactions"
     assert "settlement_date" in column_map, "Missing settlement_date column in transactions"
     assert "batch_id" in column_map, "Missing batch_id column in transactions"
+
+
+def test_terminals_table_exists_for_acquirer_mapping() -> None:
+    """Verify that the terminals table exists with acquirer mappings for multi-party settlement.
+
+    The terminals table maps terminal_id to acquirer_id (the merchant's bank).
+    This is critical for multi-party settlement, which connects:
+    - Issuer ID (cardholder's bank) from BIN lookup
+    - Acquirer ID (merchant's bank) from terminal mapping
+
+    Example settlement flow:
+    - Bank A (issuer) owes Bank B (acquirer) based on accumulated transactions
+    - Bank A → Bank B: 100,000
+    - Bank B → Bank A:  30,000
+    - Net: Bank A owes Bank B 70,000
+
+    Raises:
+        AssertionError: When terminals table doesn't exist or sample data is missing.
+    """
+    if shutil.which("docker") is None:
+        pytest.skip("docker is not available")
+
+    # Verify terminals table exists
+    result = _run_postgres_query(
+        """
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables
+            WHERE table_name = 'terminals'
+        );
+        """
+    )
+    assert "t" in result.lower(), "terminals table does not exist"
+
+    # Verify sample terminal mappings
+    terminals = _run_postgres_query(
+        """
+        SELECT terminal_id, acquirer_id
+        FROM terminals
+        ORDER BY terminal_id;
+        """
+    )
+    assert "TERM0001" in terminals, "Missing sample terminal TERM0001"
+    assert "TERM0002" in terminals, "Missing sample terminal TERM0002"
+    assert "TERM0003" in terminals, "Missing sample terminal TERM0003"
+    assert "BANK_A" in terminals, "Missing sample acquirer BANK_A"
+    assert "BANK_B" in terminals, "Missing sample acquirer BANK_B"
+    assert "BANK_C" in terminals, "Missing sample acquirer BANK_C"
+
+
+def test_multi_party_settlement_schema_complete() -> None:
+    """Verify that all schema components for multi-party settlement are in place.
+
+    Multi-party settlement requires:
+    1. bins table: PAN prefix → Issuer Bank mapping
+    2. terminals table: Terminal ID → Acquirer Bank mapping
+    3. transactions table: issuer_id + acquirer_id + settled flag
+    4. settlement_batches table: Aggregated settlement batches
+
+    This test validates that the database is configured for calculating
+    net positions between issuer and acquirer banks.
+
+    Raises:
+        AssertionError: When any required settlement component is missing.
+    """
+    if shutil.which("docker") is None:
+        pytest.skip("docker is not available")
+
+    # Verify issuer_id in transactions (from BIN lookup)
+    result = _run_postgres_query(
+        """
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'transactions' AND column_name = 'issuer_id';
+        """
+    )
+    assert result.strip(), "Missing issuer_id in transactions (BIN lookup)"
+
+    # Verify acquirer_id in transactions (from terminal mapping)
+    result = _run_postgres_query(
+        """
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'transactions' AND column_name = 'acquirer_id';
+        """
+    )
+    assert result.strip(), "Missing acquirer_id in transactions (terminal mapping)"
+
+    # Verify settled flag for settlement tracking
+    result = _run_postgres_query(
+        """
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'transactions' AND column_name = 'settled';
+        """
+    )
+    assert result.strip(), "Missing settled flag in transactions"
+
+    # Verify bins table has sample data
+    result = _run_postgres_query(
+        "SELECT COUNT(*) FROM bins WHERE bin IN ('123456', '654321', '512345');"
+    )
+    assert "3" in result, "Missing sample BIN data for settlement testing"
+
+    # Verify terminals table has sample data
+    result = _run_postgres_query(
+        "SELECT COUNT(*) FROM terminals WHERE terminal_id IN ('TERM0001', 'TERM0002', 'TERM0003');"
+    )
+    assert "3" in result, "Missing sample terminal data for settlement testing"
