@@ -104,6 +104,20 @@ mvn -q -Dtest=RoutingEngineTest,SettlementServiceTest,NetSettlementServiceTest t
 /home/samehabib/jpos-q2-switch-ui/.venv/bin/python -m pytest -q python_tests/test_full_setup_python.py
 ```
 
+## Python Hit Load Testing (Runtime, Not SQL Seeding)
+
+For hit/load testing through the live switch listener (`127.0.0.1:9000`), use the Python load runner:
+
+```bash
+cd /home/samehabib/jpos-q2-switch-ui
+/home/samehabib/jpos-q2-switch-ui/.venv/bin/python python_tests/load_iso_hits.py --hits 100 --workers 4
+```
+
+This sends real ISO requests at runtime and prints per-worker and total response-code counters.
+Use this when you want traffic-driven persistence and load behavior validation.
+
+SQL seed scripts are still available for static dataset preparation, but they do not generate runtime traffic.
+
 Note:
 
 - In environments where file appender markers are not emitted, one integration assertion in `python_tests/test_full_setup_python.py` is skipped instead of failing.

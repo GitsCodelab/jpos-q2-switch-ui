@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, Row, Col, Statistic, Table, message, Spin } from 'antd'
-import { ArrowUpOutlined, ArrowDownOutlined, ReloadOutlined } from '@ant-design/icons'
-import { dashboardAPI, reconciliationAPI, settlementAPI, transactionAPI } from '../services/api'
+import { ArrowUpOutlined } from '@ant-design/icons'
+import { dashboardAPI, transactionAPI } from '../services/api'
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState(null)
@@ -15,12 +15,25 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
-      const [metricsRes, txRes] = await Promise.all([
-        dashboardAPI.getMetrics().catch(() => ({ data: {} })),
-        transactionAPI.list({ limit: 10 }).catch(() => ({ data: { transactions: [] } })),
+      const [summaryRes, statusRes, txRes] = await Promise.all([
+        dashboardAPI.getSummary().catch(() => ({ data: {} })),
+        dashboardAPI.getStatus().catch(() => ({ data: [] })),
+        transactionAPI.list({ limit: 10 }).catch(() => ({ data: [] })),
       ])
-      setMetrics(metricsRes.data)
-      setRecentTx(txRes.data.transactions || [])
+
+      const statusMap = {}
+      for (const item of statusRes.data || []) {
+        statusMap[item.status] = item.count
+      }
+
+      const computed = {
+        ...summaryRes.data,
+        approved: statusMap.APPROVED || 0,
+        pending: statusMap.REQUEST_RECEIVED || statusMap.PENDING || 0,
+        failed: (statusMap.DECLINED || 0) + (statusMap.SECURITY_DECLINE || 0) + (statusMap.TIMEOUT || 0),
+      }
+      setMetrics(computed)
+      setRecentTx(Array.isArray(txRes.data) ? txRes.data : [])
     } catch (error) {
       message.error('Failed to load dashboard data')
       console.error(error)
@@ -32,8 +45,8 @@ export default function Dashboard() {
   const columns = [
     {
       title: 'Transaction ID',
-      dataIndex: 'transaction_id',
-      key: 'transaction_id',
+      dataIndex: 'id',
+      key: 'id',
       width: 140,
       render: (text) => <span style={{ fontSize: '11px' }}>{text}</span>,
     },
@@ -166,7 +179,7 @@ export default function Dashboard() {
           <Table
             dataSource={recentTx}
             columns={columns}
-            rowKey="transaction_id"
+            rowKey="id"
             size="small"
             bordered
             pagination={false}

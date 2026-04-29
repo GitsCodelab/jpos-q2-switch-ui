@@ -23,9 +23,9 @@ export default function Reconciliation() {
         reconciliationAPI.getReversalCandidates(),
         reconciliationAPI.getSummary(),
       ])
-      setIssues(issuesRes.data.issues || [])
-      setMissing(missingRes.data.missing || [])
-      setReversalCandidates(reversalRes.data.candidates || [])
+      setIssues(Array.isArray(issuesRes.data) ? issuesRes.data : [])
+      setMissing(Array.isArray(missingRes.data) ? missingRes.data : [])
+      setReversalCandidates(Array.isArray(reversalRes.data) ? reversalRes.data : [])
       setSummary(summaryRes.data)
     } catch (error) {
       message.error('Failed to fetch reconciliation data')
@@ -38,8 +38,8 @@ export default function Reconciliation() {
   const issuesColumns = [
     {
       title: 'Transaction ID',
-      dataIndex: 'transaction_id',
-      key: 'transaction_id',
+      dataIndex: 'stan',
+      key: 'stan',
       width: 150,
       render: (text) => <span style={{ fontSize: '11px' }}>{text}</span>,
     },
@@ -62,17 +62,17 @@ export default function Reconciliation() {
       width: 80,
     },
     {
-      title: 'Message',
-      dataIndex: 'message',
-      key: 'message',
+      title: 'RRN',
+      dataIndex: 'rrn',
+      key: 'rrn',
     },
   ]
 
   const missingColumns = [
     {
       title: 'Transaction ID',
-      dataIndex: 'transaction_id',
-      key: 'transaction_id',
+      dataIndex: 'stan',
+      key: 'stan',
       width: 150,
       render: (text) => <span style={{ fontSize: '11px' }}>{text}</span>,
     },
@@ -83,16 +83,9 @@ export default function Reconciliation() {
       width: 100,
     },
     {
-      title: 'Amount',
-      dataIndex: 'amount',
-      key: 'amount',
-      width: 100,
-      render: (text) => `$${parseFloat(text).toFixed(2)}`,
-    },
-    {
-      title: 'Missing In',
-      dataIndex: 'missing_in',
-      key: 'missing_in',
+      title: 'Issue Type',
+      dataIndex: 'issue_type',
+      key: 'issue_type',
       width: 100,
     },
   ]
@@ -100,8 +93,8 @@ export default function Reconciliation() {
   const reversalColumns = [
     {
       title: 'Transaction ID',
-      dataIndex: 'transaction_id',
-      key: 'transaction_id',
+      dataIndex: 'stan',
+      key: 'stan',
       width: 150,
       render: (text) => <span style={{ fontSize: '11px' }}>{text}</span>,
     },
@@ -112,22 +105,15 @@ export default function Reconciliation() {
       width: 100,
     },
     {
-      title: 'Amount',
-      dataIndex: 'amount',
-      key: 'amount',
-      width: 100,
-      render: (text) => `$${parseFloat(text).toFixed(2)}`,
-    },
-    {
       title: 'Retry Count',
       dataIndex: 'retry_count',
       key: 'retry_count',
       width: 80,
     },
     {
-      title: 'Last Response',
-      dataIndex: 'response_code',
-      key: 'response_code',
+      title: 'Issue Type',
+      dataIndex: 'issue_type',
+      key: 'issue_type',
       width: 100,
     },
   ]
@@ -148,7 +134,7 @@ export default function Reconciliation() {
           <Col xs={12} sm={6}>
             <Statistic
               title="Missing Transactions"
-              value={summary.missing_transactions || 0}
+              value={summary.missing_responses || 0}
               valueStyle={{ color: '#e3a821' }}
             />
           </Col>
@@ -160,10 +146,7 @@ export default function Reconciliation() {
             />
           </Col>
           <Col xs={12} sm={6}>
-            <Statistic
-              title="Total Amount at Risk"
-              value={`$${parseFloat(summary.total_amount_at_risk || 0).toFixed(2)}`}
-            />
+            <Statistic title="Open Issues" value={summary.total_issues || 0} />
           </Col>
         </Row>
       ),
@@ -175,7 +158,7 @@ export default function Reconciliation() {
         <Table
           dataSource={issues}
           columns={issuesColumns}
-          rowKey="transaction_id"
+          rowKey={(r) => `${r.stan}-${r.rrn}-${r.issue_type}`}
           loading={loading}
           size="small"
           bordered
@@ -190,7 +173,7 @@ export default function Reconciliation() {
         <Table
           dataSource={missing}
           columns={missingColumns}
-          rowKey="transaction_id"
+          rowKey={(r) => `${r.stan}-${r.rrn}-${r.issue_type}`}
           loading={loading}
           size="small"
           bordered
@@ -205,7 +188,7 @@ export default function Reconciliation() {
         <Table
           dataSource={reversalCandidates}
           columns={reversalColumns}
-          rowKey="transaction_id"
+          rowKey={(r) => `${r.stan}-${r.rrn}-${r.issue_type}`}
           loading={loading}
           size="small"
           bordered

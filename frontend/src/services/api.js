@@ -57,7 +57,8 @@ export const settlementAPI = {
 }
 
 export const dashboardAPI = {
-  getMetrics: () => api.get('/dashboard/metrics'),
+  getSummary: () => api.get('/dashboard/summary'),
+  getStatus: () => api.get('/dashboard/status'),
 }
 
 export default api

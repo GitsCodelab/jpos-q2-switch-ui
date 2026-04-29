@@ -18,7 +18,7 @@ export default function Settlement() {
     setLoading(true)
     try {
       const response = await settlementAPI.getBatches({ limit: 100 })
-      setBatches(response.data.batches || [])
+      setBatches(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
       message.error('Failed to fetch settlement batches')
       console.error(error)
@@ -73,6 +73,7 @@ export default function Settlement() {
       dataIndex: 'settlement_type',
       key: 'settlement_type',
       width: 100,
+      render: () => 'MANUAL',
     },
     {
       title: 'Total Count',
@@ -95,14 +96,15 @@ export default function Settlement() {
       key: 'status',
       width: 100,
       render: (status) => {
+        const value = status || 'COMPLETED'
         const colors = {
           COMPLETED: '#107e3e',
           PENDING: '#e3a821',
           FAILED: '#bb0000',
         }
         return (
-          <span style={{ color: colors[status] || '#1d2d3e', fontWeight: '500' }}>
-            {status}
+          <span style={{ color: colors[value] || '#1d2d3e', fontWeight: '500' }}>
+            {value}
           </span>
         )
       },
@@ -215,13 +217,13 @@ export default function Settlement() {
                 </Col>
               </Row>
               <div style={{ marginBottom: '12px' }}>
-                <strong>Settlement Type:</strong> {selectedBatch.settlement_type}
+                <strong>Settlement Type:</strong> MANUAL
               </div>
               <div style={{ marginBottom: '12px' }}>
                 <strong>Created At:</strong> {new Date(selectedBatch.created_at).toLocaleString()}
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <strong>Updated At:</strong> {new Date(selectedBatch.updated_at).toLocaleString()}
+                <strong>Updated At:</strong> {selectedBatch.created_at ? new Date(selectedBatch.created_at).toLocaleString() : '-'}
               </div>
             </div>
           </Spin>

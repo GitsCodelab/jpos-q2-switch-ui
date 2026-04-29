@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Card, Table, Button, Space, Modal, Form, Input, message } from 'antd'
-import { PlusOutlined, SearchOutlined, EyeOutlined } from '@ant-design/icons'
+import { SearchOutlined, EyeOutlined } from '@ant-design/icons'
 import { transactionAPI } from '../services/api'
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState([])
   const [loading, setLoading] = useState(false)
-  const [searchParams, setSearchParams] = useState({})
   const [form] = Form.useForm()
   const [selectedTx, setSelectedTx] = useState(null)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
@@ -19,7 +18,7 @@ export default function Transactions() {
     setLoading(true)
     try {
       const response = await transactionAPI.list(params)
-      setTransactions(response.data.transactions || [])
+      setTransactions(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
       message.error('Failed to fetch transactions')
       console.error(error)
@@ -41,8 +40,8 @@ export default function Transactions() {
   const columns = [
     {
       title: 'Transaction ID',
-      dataIndex: 'transaction_id',
-      key: 'transaction_id',
+      dataIndex: 'id',
+      key: 'id',
       width: 150,
       render: (text) => <span style={{ fontSize: '11px' }}>{text}</span>,
     },
@@ -86,8 +85,8 @@ export default function Transactions() {
     },
     {
       title: 'Response Code',
-      dataIndex: 'response_code',
-      key: 'response_code',
+      dataIndex: 'rc',
+      key: 'rc',
       width: 120,
     },
     {
@@ -150,7 +149,7 @@ export default function Transactions() {
         <Table
           dataSource={transactions}
           columns={columns}
-          rowKey="transaction_id"
+          rowKey="id"
           loading={loading}
           size="small"
           bordered
@@ -168,7 +167,7 @@ export default function Transactions() {
         {selectedTx && (
           <div style={{ fontSize: '12px' }}>
             <div style={{ marginBottom: '12px' }}>
-              <strong>Transaction ID:</strong> {selectedTx.transaction_id}
+              <strong>Transaction ID:</strong> {selectedTx.id}
             </div>
             <div style={{ marginBottom: '12px' }}>
               <strong>STAN:</strong> {selectedTx.stan}
@@ -183,7 +182,7 @@ export default function Transactions() {
               <strong>Status:</strong> {selectedTx.status}
             </div>
             <div style={{ marginBottom: '12px' }}>
-              <strong>Response Code:</strong> {selectedTx.response_code}
+              <strong>Response Code:</strong> {selectedTx.rc}
             </div>
             <div style={{ marginBottom: '12px' }}>
               <strong>Retry Count:</strong> {selectedTx.retry_count}
