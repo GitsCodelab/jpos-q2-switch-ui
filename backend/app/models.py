@@ -36,7 +36,7 @@ class Transaction(Base):
 class TransactionEvent(Base):
     __tablename__ = "transaction_events"
 
-    id = Column(BigInteger, primary_key=True, index=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
     stan = Column(String(12))
     rrn = Column(String(12))
     mti = Column(String(4))

@@ -91,6 +91,18 @@ def setup_db():
             id=2, stan="000001", rrn="RRN000001", mti="0210",
             event_type="RESPONSE", rc="00",
         ),
+        TransactionEvent(
+            id=3, stan="000001", rrn="RRN000001", mti="0200",
+            event_type="FRAUD_FLAG",
+            request_iso="score=55;reasons=RULE:HIGH_AMOUNT_10K",
+            rc=None,
+        ),
+        TransactionEvent(
+            id=4, stan="000004", rrn="RRN000004", mti="0200",
+            event_type="FRAUD_DECLINE",
+            request_iso="score=85;reasons=BLACKLIST_TERMINAL",
+            rc="05",
+        ),
     ])
 
     db.add_all([
