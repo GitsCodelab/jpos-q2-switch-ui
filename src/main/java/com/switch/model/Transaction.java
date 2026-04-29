@@ -1,6 +1,7 @@
 package com.qswitch.model;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 public class Transaction {
     private String mti;
@@ -15,6 +16,12 @@ public class Transaction {
     private String status;
     private String finalStatus;
     private boolean reversal;
+    private String issuerId;
+    private String scheme;
+    private int retryCount;
+    private boolean settled;
+    private LocalDate settlementDate;
+    private String batchId;
     private Instant createdAt = Instant.now();
 
     public String getMti() {
@@ -107,6 +114,54 @@ public class Transaction {
 
     public void setReversal(boolean reversal) {
         this.reversal = reversal;
+    }
+
+    public String getIssuerId() {
+        return issuerId;
+    }
+
+    public void setIssuerId(String issuerId) {
+        this.issuerId = issuerId;
+    }
+
+    public String getScheme() {
+        return scheme;
+    }
+
+    public void setScheme(String scheme) {
+        this.scheme = scheme;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(int retryCount) {
+        this.retryCount = retryCount;
+    }
+
+    public boolean isSettled() {
+        return settled;
+    }
+
+    public void setSettled(boolean settled) {
+        this.settled = settled;
+    }
+
+    public LocalDate getSettlementDate() {
+        return settlementDate;
+    }
+
+    public void setSettlementDate(LocalDate settlementDate) {
+        this.settlementDate = settlementDate;
+    }
+
+    public String getBatchId() {
+        return batchId;
+    }
+
+    public void setBatchId(String batchId) {
+        this.batchId = batchId;
     }
 
     public void setApproved(boolean approved) {

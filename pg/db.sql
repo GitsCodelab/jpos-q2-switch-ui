@@ -33,6 +33,9 @@ CREATE TABLE transactions (
     final_status VARCHAR(20),
 
     is_reversal BOOLEAN DEFAULT FALSE,
+    issuer_id VARCHAR(12),
+    scheme VARCHAR(20),
+    retry_count INT DEFAULT 0,
     settled BOOLEAN DEFAULT FALSE,
     settlement_date DATE,
     batch_id VARCHAR(32),
@@ -46,6 +49,9 @@ CREATE TABLE transactions (
 CREATE INDEX idx_transactions_stan ON transactions(stan);
 CREATE INDEX idx_transactions_rrn ON transactions(rrn);
 CREATE INDEX idx_transactions_status ON transactions(status);
+CREATE INDEX idx_transactions_issuer_id ON transactions(issuer_id);
+CREATE INDEX idx_transactions_scheme ON transactions(scheme);
+CREATE INDEX idx_transactions_retry_count ON transactions(retry_count);
 CREATE INDEX idx_transactions_settled ON transactions(settled);
 CREATE INDEX idx_transactions_batch_id ON transactions(batch_id);
 
@@ -96,7 +102,23 @@ CREATE TABLE transaction_meta (
 CREATE INDEX idx_meta_stan ON transaction_meta(stan);
 
 -- =========================
--- 4. SETTLEMENT BATCHES
+-- 4. BIN ROUTING
+-- =========================
+CREATE TABLE bins (
+    bin VARCHAR(6) PRIMARY KEY,
+    scheme VARCHAR(20),
+    issuer_id VARCHAR(12)
+);
+
+CREATE INDEX idx_bins_scheme ON bins(scheme);
+
+INSERT INTO bins (bin, scheme, issuer_id) VALUES
+    ('123456', 'LOCAL', 'BANK_A'),
+    ('654321', 'VISA', 'BANK_B')
+ON CONFLICT (bin) DO NOTHING;
+
+-- =========================
+-- 5. SETTLEMENT BATCHES
 -- =========================
 CREATE TABLE settlement_batches (
     id BIGSERIAL PRIMARY KEY,

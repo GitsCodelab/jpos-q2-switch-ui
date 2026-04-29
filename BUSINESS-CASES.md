@@ -102,12 +102,14 @@
 
 ## 🔌 10. Integration (Q2 + Services)
 
-| Area             | What to Test     | Example     | Expected Result   | Priority |
-| ---------------- | ---------------- | ----------- | ----------------- | -------- |
-| Q2 Listener      | Receive ISO      | 0200        | Message received  | 🔴 High  |
-| MUX Routing      | Correct dispatch | MTI-based   | Routed properly   | 🔴 High  |
-| Service Call     | Python fraud     | API call    | Response received | 🔴 High  |
-| Timeout Handling | Python down      | No response | Fallback applied  | 🔴 High  |
+| Area                 | What to Test          | Example                     | Expected Result                         | Priority |
+| -------------------- | --------------------- | --------------------------- | --------------------------------------- | -------- |
+| Q2 Listener          | Receive ISO           | 0200                        | Message received                        | 🔴 High  |
+| BIN Routing          | PAN->BIN decision     | 123456..., 654321...        | LOCAL/VISA/MC path selected             | 🔴 High  |
+| MUX Routing          | Remote scheme dispatch| VISA/MC                     | Routed to MUX with timeout handling     | 🔴 High  |
+| Unknown BIN          | Invalid card handling | BIN not in table            | RC=14                                   | 🔴 High  |
+| Timeout Retry        | Retry threshold       | remote timeout              | retry_count increments and capped retry | 🔴 High  |
+| Fraud Rule (starter) | High amount local tx  | amount > 100000             | RC=05 decline                           | 🔴 High  |
 
 ---
 
@@ -123,19 +125,22 @@
 
 # 🏁 Final Coverage Summary
 
-| Category    | Coverage |
-| ----------- | -------- |
-| Protocol    | ✅        |
-| Security    | ✅        |
-| Lifecycle   | ✅        |
-| Failures    | ✅        |
-| Idempotency | ✅        |
-| Persistence | ✅        |
-| Reversal    | ✅        |
-| Concurrency | ✅        |
-| Performance | 🟡       |
-| Integration | ✅        |
-| Audit       | ✅        |
+| Category         | Coverage |
+| ---------------- | -------- |
+| Protocol         | ✅        |
+| Security         | ✅        |
+| Lifecycle        | ✅        |
+| Failures         | ✅        |
+| Idempotency      | ✅        |
+| Persistence      | ✅        |
+| Reversal         | ✅        |
+| Routing (BIN)    | ✅        |
+| Fraud Starter    | ✅        |
+| Settlement/Net   | ✅        |
+| Concurrency      | ✅        |
+| Performance      | 🟡       |
+| Integration      | ✅        |
+| Audit            | ✅        |
 
 ---
 

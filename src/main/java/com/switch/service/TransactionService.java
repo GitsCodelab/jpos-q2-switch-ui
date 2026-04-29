@@ -17,6 +17,8 @@ import java.sql.SQLException;
 import java.util.Optional;
 
 public class TransactionService {
+    private static final long FRAUD_LIMIT_MINOR_UNITS = 100_000L;
+
     private final TransactionDAO transactionDAO;
     private final EventDAO eventDAO;
     private final TransactionMetaDAO transactionMetaDAO;
@@ -45,7 +47,12 @@ public class TransactionService {
         transaction.setAmount(amount);
         transaction.setCurrency("840");
 
-        if (amount > 0) {
+        if (amount > FRAUD_LIMIT_MINOR_UNITS) {
+            transaction.setApproved(false);
+            transaction.setResponseCode("05");
+            transaction.setStatus("DECLINED");
+            transaction.setFinalStatus("LOCAL_RESPONSE");
+        } else if (amount > 0) {
             transaction.setApproved(true);
             transaction.setResponseCode("00");
             transaction.setStatus("APPROVED");
@@ -112,6 +119,14 @@ public class TransactionService {
             String responseIso = dumpIso(response);
             eventDAO.saveIsoEvent(connection, stan, rrn, fieldOrNull(response, 0), eventType, null, responseIso, rc);
         });
+    }
+
+    public void updateRoutingMetadata(String stan, String rrn, String issuerId, String scheme) {
+        transactionDAO.updateRouting(stan, rrn, issuerId, scheme);
+    }
+
+    public int incrementRetryCount(String stan, String rrn) {
+        return transactionDAO.incrementRetryCount(stan, rrn);
     }
 
     private String mapRcToStatus(String rc, String eventType) {

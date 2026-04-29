@@ -195,6 +195,48 @@ docker compose exec -T jpos-postgresql psql -U postgres -d jpos -c "SELECT id,st
 docker compose exec -T jpos-postgresql psql -U postgres -d jpos -c "SELECT id,stan,event_type,left(request_iso,120) AS request_head,left(response_iso,120) AS response_head,created_at FROM transaction_events ORDER BY id DESC LIMIT 10;"
 ```
 
+## Routing + BIN Engine (Upgrade 1)
+
+The switch now supports PAN/BIN-based routing decisions before legacy fallback paths.
+
+Core implementation:
+
+- `src/main/java/com/switch/routing/Bin.java`
+- `src/main/java/com/switch/routing/BinDAO.java`
+- `src/main/java/com/switch/routing/RoutingEngine.java`
+
+Switch integration:
+
+- `src/main/java/com/switch/listener/SwitchListener.java` now invokes routing engine first.
+- flow: PAN -> BIN -> scheme -> `LOCAL`/`VISA`/`MC`.
+
+Routing outcomes:
+
+- unknown BIN -> `RC=14`
+- local scheme -> local response path
+- VISA/MC -> MUX request (timeout mapped to `RC=91`)
+
+Database additions used by this upgrade:
+
+- `bins(bin, scheme, issuer_id)`
+- `transactions.issuer_id`
+- `transactions.scheme`
+- `transactions.retry_count`
+
+## Retry Engine (Upgrade 2)
+
+Light retry is enabled for routed timeout responses:
+
+- on timeout, retry counter increments
+- retry continues while `retry_count < 2`
+- after threshold, timeout response is returned and reversal workflow can pick candidate by reconciliation.
+
+## Fraud Starter Rule (Upgrade 3)
+
+A starter fraud rule is active for local processing paths:
+
+- if `amount > 100000` (minor units) -> `RC=05` decline.
+
 ## Reconciliation Service
 
 The project includes a reconciliation module that reads persisted data and reports operational gaps.
@@ -306,10 +348,18 @@ If your database already exists, run this one-time migration:
 ```bash
 cd /home/samehabib/jpos-q2-switch
 docker compose exec -T jpos-postgresql psql -U postgres -d jpos \
+	-c "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS issuer_id VARCHAR(12);" \
+	-c "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS scheme VARCHAR(20);" \
+	-c "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS retry_count INT DEFAULT 0;" \
 	-c "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS settled BOOLEAN DEFAULT FALSE;" \
 	-c "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS settlement_date DATE;" \
 	-c "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS batch_id VARCHAR(32);" \
+	-c "CREATE TABLE IF NOT EXISTS bins (bin VARCHAR(6) PRIMARY KEY, scheme VARCHAR(20), issuer_id VARCHAR(12));" \
+	-c "INSERT INTO bins (bin, scheme, issuer_id) VALUES ('123456','LOCAL','BANK_A'),('654321','VISA','BANK_B') ON CONFLICT (bin) DO NOTHING;" \
 	-c "CREATE TABLE IF NOT EXISTS settlement_batches (id BIGSERIAL PRIMARY KEY, batch_id VARCHAR(32) UNIQUE, total_count INT, total_amount BIGINT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);" \
+	-c "CREATE INDEX IF NOT EXISTS idx_transactions_issuer_id ON transactions(issuer_id);" \
+	-c "CREATE INDEX IF NOT EXISTS idx_transactions_scheme ON transactions(scheme);" \
+	-c "CREATE INDEX IF NOT EXISTS idx_transactions_retry_count ON transactions(retry_count);" \
 	-c "CREATE INDEX IF NOT EXISTS idx_transactions_settled ON transactions(settled);" \
 	-c "CREATE INDEX IF NOT EXISTS idx_transactions_batch_id ON transactions(batch_id);" \
 	-c "CREATE INDEX IF NOT EXISTS idx_settlement_batches_batch_id ON settlement_batches(batch_id);"
@@ -335,13 +385,22 @@ mvn -q -DskipTests org.codehaus.mojo:exec-maven-plugin:3.5.0:java \
 	-Dexec.mainClass=com.qswitch.settlement.SettlementRunner
 ```
 
-Net position query:
+Net position query by terminal:
 
 ```sql
 SELECT terminal_id, SUM(amount) AS net_amount
 FROM transactions
 WHERE settled = TRUE
 GROUP BY terminal_id;
+```
+
+Net position query by issuer (multi-party settlement view):
+
+```sql
+SELECT issuer_id, SUM(amount) AS net_amount
+FROM transactions
+WHERE settled = TRUE
+GROUP BY issuer_id;
 ```
 
 Run settlement tests only:
@@ -355,6 +414,8 @@ Phase 3 verification checklist:
 
 - Settlement unit coverage:
 	- `mvn -q -Dtest=SettlementServiceTest test`
+- Routing + fraud tests:
+	- `mvn -q -Dtest=RoutingEngineTest,TransactionServiceFraudTest test`
 - Reconciliation + auto-reversal + settlement together:
 	- `mvn -q -Dtest=ReconciliationServiceTest,AutoReversalServiceTest,SettlementServiceTest test`
 - Full Java regression:

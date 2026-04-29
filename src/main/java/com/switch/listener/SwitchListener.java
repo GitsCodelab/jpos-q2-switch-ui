@@ -3,6 +3,9 @@ package com.qswitch.listener;
 import com.qswitch.dao.EventDAO;
 import com.qswitch.dao.TransactionDAO;
 import com.qswitch.model.Transaction;
+import com.qswitch.recon.DBConnectionManager;
+import com.qswitch.routing.BinDAO;
+import com.qswitch.routing.RoutingEngine;
 import com.qswitch.service.SecurityService;
 import com.qswitch.service.TransactionService;
 import org.jpos.iso.ISOException;
@@ -23,10 +26,11 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
 
     private final TransactionService transactionService;
     private final SecurityService securityService;
+    private final BinDAO binDAO;
     private boolean debugEnabled;
 
     public SwitchListener() {
-        this(new TransactionService(new TransactionDAO(), new EventDAO()), new SecurityService());
+        this(new TransactionService(new TransactionDAO(), new EventDAO()), new SecurityService(), new BinDAO(DBConnectionManager.getDataSource()));
     }
 
     @Override
@@ -37,12 +41,17 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
     }
 
     public SwitchListener(TransactionService transactionService) {
-        this(transactionService, new SecurityService());
+        this(transactionService, new SecurityService(), new BinDAO(DBConnectionManager.getDataSource()));
     }
 
     public SwitchListener(TransactionService transactionService, SecurityService securityService) {
+        this(transactionService, securityService, new BinDAO(DBConnectionManager.getDataSource()));
+    }
+
+    public SwitchListener(TransactionService transactionService, SecurityService securityService, BinDAO binDAO) {
         this.transactionService = transactionService;
         this.securityService = securityService;
+        this.binDAO = binDAO;
     }
 
     @Override
@@ -64,7 +73,38 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
                 return true;
             }
 
-            // ---------------- MUX ROUTING ----------------
+            // ---------------- BIN ROUTING ----------------
+            RoutingEngine.RouteResult routeResult = requestThroughRouting(request);
+            if (routeResult.isDecisionMade()) {
+                transactionService.updateRoutingMetadata(stan, rrn, routeResult.getIssuerId(), routeResult.getScheme());
+
+                if (routeResult.hasResponse()) {
+                    String eventType = resolveRoutedEventType(routeResult);
+                    if (routeResult.isTimeout()) {
+                        int retryCount = transactionService.incrementRetryCount(stan, rrn);
+                        if (retryCount < 2) {
+                            getLog().warn("Routing timeout, retrying STAN=" + stan + " retryCount=" + retryCount);
+                            routeResult = requestThroughRouting(request);
+                            if (routeResult.isDecisionMade()) {
+                                transactionService.updateRoutingMetadata(stan, rrn, routeResult.getIssuerId(), routeResult.getScheme());
+                                if (routeResult.isTimeout()) {
+                                    transactionService.incrementRetryCount(stan, rrn);
+                                    getLog().warn("Routing timeout threshold reached, reversal should be triggered for STAN=" + stan);
+                                }
+                                if (routeResult.hasResponse()) {
+                                    safeSend(source, request, routeResult.getResponse(), "ROUTED RESPONSE", resolveRoutedEventType(routeResult));
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+
+                    safeSend(source, request, routeResult.getResponse(), "ROUTED RESPONSE", eventType);
+                    return true;
+                }
+            }
+
+            // ---------------- LEGACY FALLBACK ----------------
             ISOMsg muxResponse = requestThroughMux(request);
             if (muxResponse != null) {
                 String eventType = "91".equals(muxResponse.getString(39)) ? "TIMEOUT" : "MUX_RESPONSE";
@@ -153,6 +193,29 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
     // ---------------- MUX ----------------
     protected MUX lookupMux() throws NameRegistrar.NotFoundException {
         return (QMUX) NameRegistrar.get("mux.acquirer-mux");
+    }
+
+    private RoutingEngine.RouteResult requestThroughRouting(ISOMsg request) {
+        try {
+            MUX mux;
+            try {
+                mux = lookupMux();
+            } catch (NameRegistrar.NotFoundException e) {
+                mux = null;
+            }
+            RoutingEngine routingEngine = new RoutingEngine(binDAO, mux);
+            return routingEngine.routeDetailed(request);
+        } catch (Exception e) {
+            getLog().error("Routing engine error", e);
+            return RoutingEngine.RouteResult.noDecision();
+        }
+    }
+
+    private String resolveRoutedEventType(RoutingEngine.RouteResult routeResult) {
+        if (routeResult.isTimeout()) {
+            return "TIMEOUT";
+        }
+        return routeResult.isRemote() ? "MUX_RESPONSE" : "LOCAL_RESPONSE";
     }
 
     private ISOMsg requestThroughMux(ISOMsg request) {
