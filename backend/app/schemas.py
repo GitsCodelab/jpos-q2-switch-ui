@@ -53,6 +53,7 @@ class ReconciliationIssueOut(BaseModel):
     rrn: Optional[str] = None
     status: Optional[str] = None
     issue_type: Optional[str] = None
+    retry_count: Optional[int] = None
     created_at: Optional[datetime] = None
 
 
@@ -76,6 +77,17 @@ class SettlementRunOut(BaseModel):
     settled_count: int
     total_amount: int
     message: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
 
 
 # ── Net Settlement ────────────────────────────────────────────────────────────
@@ -130,3 +142,8 @@ class DashboardVolumeOut(BaseModel):
     date: str
     count: int
     total_amount: int
+
+
+class ErrorResponse(BaseModel):
+    code: str
+    message: str

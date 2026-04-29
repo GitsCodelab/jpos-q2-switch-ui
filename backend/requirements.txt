@@ -6,6 +6,7 @@ python-dotenv==1.0.0
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.23
 alembic==1.13.1
+PyJWT==2.8.0
 # Testing
 httpx==0.25.2
 pytest==7.4.3

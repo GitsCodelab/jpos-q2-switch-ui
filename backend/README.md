@@ -55,6 +55,34 @@ File: `backend/.env`
 | `POSTGRES_DB` | `jpos` | Database name |
 | `API_TITLE` | `jPOS Switch API` | OpenAPI title |
 | `API_VERSION` | `1.0.0` | OpenAPI version |
+| `JWT_SECRET_KEY` | `dev-jwt-secret` | Secret used to sign JWT access tokens |
+| `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
+| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Access token lifetime in minutes |
+| `AUTH_USERNAME` | `admin` | Username accepted by `/auth/login` |
+| `AUTH_PASSWORD` | `admin123` | Password accepted by `/auth/login` |
+
+---
+
+## Authentication
+
+Use `POST /auth/login` with JSON credentials to get a bearer token:
+
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+The response returns `access_token`, `token_type`, and `expires_in`.
+
+Protected routes must send:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Currently, `POST /settlement/run` requires a valid JWT bearer token.
 
 ---
 

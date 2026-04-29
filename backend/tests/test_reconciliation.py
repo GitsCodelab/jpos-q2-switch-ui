@@ -16,6 +16,7 @@ class TestReconciliationIssues:
             assert "stan" in issue
             assert "status" in issue
             assert "issue_type" in issue
+            assert "retry_count" in issue
 
     def test_pagination_limit(self, client):
         r = client.get("/reconciliation/issues?limit=1")
@@ -47,6 +48,11 @@ class TestMissingResponses:
         stans = [i["stan"] for i in r.json()]
         assert "000002" in stans
 
+    def test_missing_exposes_retry_count(self, client):
+        r = client.get("/reconciliation/missing")
+        issue = next(i for i in r.json() if i["stan"] == "000002")
+        assert issue["retry_count"] == 3
+
 
 class TestReversalCandidates:
     def test_returns_200(self, client):
@@ -67,6 +73,11 @@ class TestReversalCandidates:
         r = client.get("/reconciliation/reversal-candidates")
         stans = [i["stan"] for i in r.json()]
         assert "000003" in stans
+
+    def test_reversal_candidates_expose_retry_count(self, client):
+        r = client.get("/reconciliation/reversal-candidates")
+        issue = next(i for i in r.json() if i["stan"] == "000003")
+        assert issue["retry_count"] == 1
 
 
 class TestReconciliationSummary:

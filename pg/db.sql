@@ -43,7 +43,8 @@ CREATE TABLE transactions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT uq_transactions_stan_rrn UNIQUE (stan, rrn)
+    CONSTRAINT uq_transactions_stan_rrn UNIQUE (stan, rrn),
+    CONSTRAINT ck_transactions_retry_count_non_negative CHECK (retry_count >= 0)
 );
 
 CREATE INDEX idx_transactions_stan ON transactions(stan);
@@ -122,10 +123,13 @@ ON CONFLICT (bin) DO NOTHING;
 -- =========================
 CREATE TABLE settlement_batches (
     id BIGSERIAL PRIMARY KEY,
-    batch_id VARCHAR(32) UNIQUE,
+    batch_id VARCHAR(32) UNIQUE NOT NULL,
     total_count INT,
     total_amount BIGINT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT ck_settlement_batches_total_count_non_negative CHECK (total_count >= 0),
+    CONSTRAINT ck_settlement_batches_total_amount_non_negative CHECK (total_amount >= 0)
 );
 
 CREATE INDEX idx_settlement_batches_batch_id ON settlement_batches(batch_id);

@@ -46,6 +46,7 @@ def get_reconciliation_issues(
                 rrn=tx.rrn,
                 status=tx.status,
                 issue_type=issue_type,
+                retry_count=tx.retry_count,
                 created_at=tx.created_at,
             )
         )
@@ -71,7 +72,7 @@ def get_missing_responses(
     return [
         ReconciliationIssueOut(
             stan=tx.stan, rrn=tx.rrn, status=tx.status,
-            issue_type="MISSING_RESPONSE", created_at=tx.created_at,
+            issue_type="MISSING_RESPONSE", retry_count=tx.retry_count, created_at=tx.created_at,
         )
         for tx in rows
     ]
@@ -96,7 +97,7 @@ def get_reversal_candidates(
     return [
         ReconciliationIssueOut(
             stan=tx.stan, rrn=tx.rrn, status=tx.status,
-            issue_type="REVERSAL_CANDIDATE", created_at=tx.created_at,
+            issue_type="REVERSAL_CANDIDATE", retry_count=tx.retry_count, created_at=tx.created_at,
         )
         for tx in rows
     ]

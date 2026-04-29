@@ -36,6 +36,7 @@
         "mvn -q -Dtest=AutoReversalServiceTest test": true,
         "pip": true,
         "true": true,
-        ".venv/bin/python": true
+        ".venv/bin/python": true,
+        "/home/samehabib/jpos-q2-switch-ui/.venv/bin/python": true
     }
 }

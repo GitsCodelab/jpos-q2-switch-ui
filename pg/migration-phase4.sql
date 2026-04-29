@@ -63,10 +63,13 @@ CREATE INDEX IF NOT EXISTS idx_net_settlement_settlement_date ON net_settlement(
 -- =========================
 CREATE TABLE IF NOT EXISTS settlement_batches (
     id BIGSERIAL PRIMARY KEY,
-    batch_id VARCHAR(32) UNIQUE,
+    batch_id VARCHAR(32) UNIQUE NOT NULL,
     total_count INT,
     total_amount BIGINT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT ck_settlement_batches_total_count_non_negative CHECK (total_count >= 0),
+    CONSTRAINT ck_settlement_batches_total_amount_non_negative CHECK (total_amount >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS idx_settlement_batches_batch_id ON settlement_batches(batch_id);
@@ -82,6 +85,45 @@ ALTER TABLE transactions ADD COLUMN IF NOT EXISTS retry_count INT DEFAULT 0;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS settled BOOLEAN DEFAULT FALSE;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS settlement_date DATE;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS batch_id VARCHAR(32);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'ck_transactions_retry_count_non_negative'
+    ) THEN
+        ALTER TABLE transactions
+        ADD CONSTRAINT ck_transactions_retry_count_non_negative
+        CHECK (retry_count >= 0);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'ck_settlement_batches_total_count_non_negative'
+    ) THEN
+        ALTER TABLE settlement_batches
+        ADD CONSTRAINT ck_settlement_batches_total_count_non_negative
+        CHECK (total_count >= 0);
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'ck_settlement_batches_total_amount_non_negative'
+    ) THEN
+        ALTER TABLE settlement_batches
+        ADD CONSTRAINT ck_settlement_batches_total_amount_non_negative
+        CHECK (total_amount >= 0);
+    END IF;
+END $$;
 
 -- =========================
 -- 7. CREATE INDEXES FOR ROUTING COLUMNS

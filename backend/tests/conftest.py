@@ -1,5 +1,6 @@
 # tests/conftest.py — Shared fixtures for all API tests
 import pytest
+import os
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -7,6 +8,12 @@ from sqlalchemy.pool import StaticPool
 
 from app.db import Base, get_db
 from app.main import app
+
+os.environ["JWT_SECRET_KEY"] = "test-jwt-secret"
+os.environ["JWT_ALGORITHM"] = "HS256"
+os.environ["JWT_ACCESS_TOKEN_EXPIRE_MINUTES"] = "60"
+os.environ["AUTH_USERNAME"] = "test-admin"
+os.environ["AUTH_PASSWORD"] = "test-password"
 
 # ── In-memory SQLite DB for testing (no Docker required) ─────────────────────
 SQLALCHEMY_TEST_URL = "sqlite://"
@@ -56,12 +63,13 @@ def setup_db():
             id=2, stan="000002", rrn="RRN000002", terminal_id="TERM0002",
             mti="0200", amount=5000, currency="USD", rc=None,
             status="REQUEST_RECEIVED", is_reversal=False,
+            retry_count=3,
         ),
         Transaction(
             id=3, stan="000003", rrn="RRN000003", terminal_id="TERM0001",
             mti="0200", amount=20000, currency="USD", rc="00",
             status="AUTHORIZED", is_reversal=False, issuer_id="BANK_B",
-            scheme="VISA", settled=False,
+            scheme="VISA", retry_count=1, settled=False,
         ),
         Transaction(
             id=4, stan="000004", rrn="RRN000004", terminal_id="TERM0002",
