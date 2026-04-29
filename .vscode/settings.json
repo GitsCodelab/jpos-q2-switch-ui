@@ -32,6 +32,7 @@
             "approve": true,
             "matchCommandLine": true
         },
-        "mvn test": true
+        "mvn test": true,
+        "mvn -q -Dtest=AutoReversalServiceTest test": true
     }
 }

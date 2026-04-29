@@ -14,13 +14,20 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -143,6 +150,148 @@ class AutoReversalServiceTest {
         assertEquals(1, ds.events.size());
     }
 
+    @Test
+    void shouldHandleDatabaseDownGracefully() {
+        StubDataSource ds = new StubDataSource();
+        ds.putTransaction("100006", "R6", "APPROVED", false, "00", "LOCAL_RESPONSE");
+        ds.setFailAllConnections(true);
+
+        StubMux mux = StubMux.always(muxResponse("00"));
+        AutoReversalService service = new AutoReversalService(ds, mux, 3, 1L, millis -> { });
+
+        int processed = service.processReversals(List.of(new ReconciliationIssue("100006", "R6", "REVERSAL_REQUIRED", "db down chaos")));
+
+        // DB down means reversal cannot be persisted, so processed should not increment.
+        assertEquals(0, processed);
+        assertEquals(1, mux.requestCalls());
+        assertEquals(0, ds.events.size());
+    }
+
+    @Test
+    void shouldExhaustRetriesWhenMuxIsDown() {
+        StubDataSource ds = new StubDataSource();
+        ds.putTransaction("100007", "R7", "AUTHORIZED", false, null, "PENDING");
+
+        StubMux mux = StubMux.always(new RuntimeException("mux down"));
+        List<Long> backoffs = new ArrayList<>();
+        AutoReversalService service = new AutoReversalService(ds, mux, 3, 10L, backoffs::add);
+
+        int processed = service.processReversals(List.of(new ReconciliationIssue("100007", "R7", "REVERSAL_REQUIRED", "mux down chaos")));
+
+        assertEquals(1, processed);
+        assertEquals(3, mux.requestCalls());
+        assertEquals(List.of(10L, 20L), backoffs);
+
+        TxRecord tx = ds.getTransaction("100007", "R7");
+        assertNotNull(tx);
+        assertEquals("REVERSAL_FAILED", tx.status);
+        assertEquals("91", tx.rc);
+        assertEquals("AUTO_REVERSAL_FAILED", tx.finalStatus);
+        assertFalse(tx.isReversal);
+    }
+
+    @Test
+    void shouldContinueAfterPartialFailureInBatch() {
+        StubDataSource ds = new StubDataSource();
+        ds.putTransaction("100008", "R8", "APPROVED", false, "00", "LOCAL_RESPONSE");
+        ds.putTransaction("100009", "R9", "APPROVED", false, "00", "LOCAL_RESPONSE");
+        ds.failEventInsertNTimes("100008", "R8", 1);
+
+        StubMux mux = StubMux.always(muxResponse("00"));
+        AutoReversalService service = new AutoReversalService(ds, mux, 2, 1L, millis -> { });
+
+        int processed = service.processReversals(List.of(
+            new ReconciliationIssue("100008", "R8", "REVERSAL_REQUIRED", "partial fail"),
+            new ReconciliationIssue("100009", "R9", "REVERSAL_REQUIRED", "must continue")
+        ));
+
+        // First candidate fails on event insert then fallback path marks as failed,
+        // second candidate must still succeed.
+        assertEquals(1, processed);
+        assertEquals(2, mux.requestCalls());
+
+        TxRecord first = ds.getTransaction("100008", "R8");
+        TxRecord second = ds.getTransaction("100009", "R9");
+        assertNotNull(first);
+        assertNotNull(second);
+        assertEquals("AUTO_REVERSAL_FAILED", first.finalStatus);
+        assertEquals("REVERSED", second.status);
+        assertTrue(ds.events.size() >= 1);
+    }
+
+    @Test
+    void shouldCapRetriesDuringRetryStorm() {
+        int candidateCount = 40;
+        int maxRetries = 5;
+
+        StubDataSource ds = new StubDataSource();
+        List<ReconciliationIssue> candidates = new ArrayList<>();
+        for (int i = 0; i < candidateCount; i++) {
+            String stan = String.format("2%05d", i);
+            String rrn = "STORM" + String.format("%07d", i);
+            ds.putTransaction(stan, rrn, "AUTHORIZED", false, null, "PENDING");
+            candidates.add(new ReconciliationIssue(stan, rrn, "REVERSAL_REQUIRED", "storm"));
+        }
+
+        StubMux mux = StubMux.always(new RuntimeException("storm mux down"));
+        List<Long> backoffs = new CopyOnWriteArrayList<>();
+        AutoReversalService service = new AutoReversalService(ds, mux, maxRetries, 2L, backoffs::add);
+
+        int processed = service.processReversals(candidates);
+
+        assertEquals(candidateCount, processed);
+        assertEquals(candidateCount * maxRetries, mux.requestCalls());
+        assertEquals(candidateCount * (maxRetries - 1), backoffs.size());
+
+        long backoffSum = backoffs.stream().mapToLong(Long::longValue).sum();
+        long expectedBackoffPerCandidate = 2L + 4L + 8L + 16L;
+        assertEquals(expectedBackoffPerCandidate * candidateCount, backoffSum);
+    }
+
+    @Test
+    void shouldHandleConcurrentReversalBursts() throws Exception {
+        int workers = 12;
+        int perWorker = 25;
+        int total = workers * perWorker;
+
+        StubDataSource ds = new StubDataSource();
+        List<List<ReconciliationIssue>> batches = new ArrayList<>();
+
+        for (int w = 0; w < workers; w++) {
+            List<ReconciliationIssue> batch = new ArrayList<>();
+            for (int i = 0; i < perWorker; i++) {
+                int n = (w * perWorker) + i;
+                String stan = String.format("3%05d", n);
+                String rrn = "CONC" + String.format("%07d", n);
+                ds.putTransaction(stan, rrn, "APPROVED", false, "00", "LOCAL_RESPONSE");
+                batch.add(new ReconciliationIssue(stan, rrn, "REVERSAL_REQUIRED", "concurrency"));
+            }
+            batches.add(batch);
+        }
+
+        StubMux mux = StubMux.always(muxResponse("00"));
+        AutoReversalService service = new AutoReversalService(ds, mux, 3, 0L, millis -> { });
+
+        ExecutorService pool = Executors.newFixedThreadPool(workers);
+        try {
+            List<Future<Integer>> futures = new ArrayList<>();
+            for (List<ReconciliationIssue> batch : batches) {
+                futures.add(pool.submit(() -> service.processReversals(batch)));
+            }
+
+            int processed = 0;
+            for (Future<Integer> f : futures) {
+                processed += f.get(30, TimeUnit.SECONDS);
+            }
+
+            assertEquals(total, processed);
+            assertEquals(total, mux.requestCalls());
+            assertEquals(total, ds.events.size());
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
     private static ISOMsg muxResponse(String rc) {
         try {
             ISOMsg msg = new ISOMsg();
@@ -190,8 +339,18 @@ class AutoReversalServiceTest {
     }
 
     private static final class StubDataSource implements DataSource {
-        private final Map<Key, TxRecord> transactions = new HashMap<>();
-        private final List<EventRecord> events = new ArrayList<>();
+        private final Map<Key, TxRecord> transactions = new ConcurrentHashMap<>();
+        private final List<EventRecord> events = new CopyOnWriteArrayList<>();
+        private final Map<Key, AtomicInteger> failEventInsertByKey = new ConcurrentHashMap<>();
+        private final AtomicBoolean failAllConnections = new AtomicBoolean(false);
+
+        private void setFailAllConnections(boolean fail) {
+            failAllConnections.set(fail);
+        }
+
+        private void failEventInsertNTimes(String stan, String rrn, int count) {
+            failEventInsertByKey.put(new Key(stan, rrn), new AtomicInteger(Math.max(0, count)));
+        }
 
         private void putTransaction(String stan, String rrn, String status, boolean isReversal, String rc, String finalStatus) {
             transactions.put(new Key(stan, rrn), new TxRecord(status, isReversal, rc, finalStatus));
@@ -202,21 +361,45 @@ class AutoReversalServiceTest {
         }
 
         @Override
-        public Connection getConnection() {
+        public Connection getConnection() throws SQLException {
+            if (failAllConnections.get()) {
+                throw new SQLException("Injected DB down");
+            }
+
+            ConnectionContext ctx = new ConnectionContext();
             InvocationHandler connectionHandler = (proxy, method, args) -> {
                 String name = method.getName();
                 if ("prepareStatement".equals(name)) {
                     String sql = (String) args[0];
-                    return createPreparedStatement(sql);
+                    return createPreparedStatement(sql, ctx);
                 }
                 if ("close".equals(name)) {
                     return null;
                 }
-                if ("setAutoCommit".equals(name) || "commit".equals(name) || "rollback".equals(name)) {
+                if ("setAutoCommit".equals(name)) {
+                    boolean autoCommit = (boolean) args[0];
+                    if (!ctx.autoCommit && autoCommit && !ctx.txOperations.isEmpty()) {
+                        for (Runnable op : ctx.txOperations) {
+                            op.run();
+                        }
+                        ctx.txOperations.clear();
+                    }
+                    ctx.autoCommit = autoCommit;
+                    return null;
+                }
+                if ("commit".equals(name)) {
+                    for (Runnable op : ctx.txOperations) {
+                        op.run();
+                    }
+                    ctx.txOperations.clear();
+                    return null;
+                }
+                if ("rollback".equals(name)) {
+                    ctx.txOperations.clear();
                     return null;
                 }
                 if ("getAutoCommit".equals(name)) {
-                    return true;
+                    return ctx.autoCommit;
                 }
                 if ("unwrap".equals(name)) {
                     throw new SQLException("Unsupported unwrap");
@@ -234,7 +417,7 @@ class AutoReversalServiceTest {
             );
         }
 
-        private PreparedStatement createPreparedStatement(String sql) {
+        private PreparedStatement createPreparedStatement(String sql, ConnectionContext ctx) {
             List<Object> params = new ArrayList<>();
             String normalized = sql.toLowerCase();
 
@@ -266,23 +449,29 @@ class AutoReversalServiceTest {
                         boolean isReversal = (Boolean) params.get(3);
                         String stan = (String) params.get(4);
                         String rrn = (String) params.get(5);
-                        transactions.put(new Key(stan, rrn), new TxRecord(status, isReversal, rc, finalStatus));
+                        applyOrStage(ctx, () -> transactions.put(new Key(stan, rrn), new TxRecord(status, isReversal, rc, finalStatus)));
                         return 1;
                     }
                     if (normalized.contains("insert into transaction_events")) {
                         String stan = (String) params.get(0);
                         String rrn = (String) params.get(1);
                         String eventType = (String) params.get(3);
+
+                        AtomicInteger failCounter = failEventInsertByKey.get(new Key(stan, rrn));
+                        if (failCounter != null && failCounter.getAndDecrement() > 0) {
+                            throw new SQLException("Injected partial failure on event insert");
+                        }
+
                         boolean duplicate = events.stream().anyMatch(e -> e.stan.equals(stan) && e.rrn.equals(rrn) && e.eventType.equals(eventType));
                         if (!duplicate) {
-                            events.add(new EventRecord(
+                            applyOrStage(ctx, () -> events.add(new EventRecord(
                                 stan,
                                 rrn,
                                 eventType,
                                 (String) params.get(4),
                                 (String) params.get(5),
                                 (String) params.get(6)
-                            ));
+                            )));
                             return 1;
                         }
                         return 0;
@@ -340,6 +529,14 @@ class AutoReversalServiceTest {
             );
         }
 
+        private void applyOrStage(ConnectionContext ctx, Runnable operation) {
+            if (ctx.autoCommit) {
+                operation.run();
+            } else {
+                ctx.txOperations.add(operation);
+            }
+        }
+
         @Override
         public Connection getConnection(String username, String password) {
             throw new UnsupportedOperationException();
@@ -377,24 +574,42 @@ class AutoReversalServiceTest {
         public boolean isWrapperFor(Class<?> iface) {
             return false;
         }
+
+        private static final class ConnectionContext {
+            private boolean autoCommit = true;
+            private final List<Runnable> txOperations = new ArrayList<>();
+        }
     }
 
     private static final class StubMux implements MUX {
         private final Deque<Object> outcomes;
-        private int calls;
+        private final Object fallbackOutcome;
+        private final AtomicInteger calls = new AtomicInteger();
 
         private StubMux(List<Object> outcomes) {
-            this.outcomes = new ArrayDeque<>(outcomes);
+            this(outcomes, null);
+        }
+
+        private StubMux(List<Object> outcomes, Object fallbackOutcome) {
+            this.outcomes = new ConcurrentLinkedDeque<>(outcomes);
+            this.fallbackOutcome = fallbackOutcome;
+        }
+
+        private static StubMux always(Object outcome) {
+            return new StubMux(List.of(), outcome);
         }
 
         private int requestCalls() {
-            return calls;
+            return calls.get();
         }
 
         @Override
         public ISOMsg request(ISOMsg request, long timeout) {
-            calls++;
-            Object next = outcomes.isEmpty() ? null : outcomes.removeFirst();
+            calls.incrementAndGet();
+            Object next = outcomes.pollFirst();
+            if (next == null) {
+                next = fallbackOutcome;
+            }
             if (next == TIMEOUT) {
                 return null;
             }

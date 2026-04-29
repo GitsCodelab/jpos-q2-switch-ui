@@ -325,6 +325,32 @@ cd /home/samehabib/jpos-q2-switch
 mvn -q -Dtest=ReconciliationServiceTest,AutoReversalServiceTest test
 ```
 
+Chaos and stress coverage (new):
+
+- DB down injection: datasource connection failure is injected and service is validated to fail safely.
+- MUX down injection: hard MUX exceptions are injected across all retry attempts.
+- Partial failure injection: event insert failure is injected mid-transaction and batch processing continuity is validated.
+- Retry storm: many reversal candidates with repeated MUX failures validate bounded retries and backoff caps.
+- Concurrency stress: parallel reversal bursts validate thread-safety for shared service usage under load.
+
+Run only chaos and stress reversal tests:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+mvn -q -Dtest=AutoReversalServiceTest test
+```
+
+Run specific chaos scenarios by name:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+mvn -q -Dtest=AutoReversalServiceTest#shouldHandleDatabaseDownGracefully test
+mvn -q -Dtest=AutoReversalServiceTest#shouldExhaustRetriesWhenMuxIsDown test
+mvn -q -Dtest=AutoReversalServiceTest#shouldContinueAfterPartialFailureInBatch test
+mvn -q -Dtest=AutoReversalServiceTest#shouldCapRetriesDuringRetryStorm test
+mvn -q -Dtest=AutoReversalServiceTest#shouldHandleConcurrentReversalBursts test
+```
+
 ## Settlement & Clearing Engine (Phase 3)
 
 Settlement lifecycle extension:

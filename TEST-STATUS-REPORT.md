@@ -2,16 +2,16 @@
 
 ## Executive Summary
 
-**Total Test Coverage: 63 Tests | All Passing ✅**
+**Total Test Coverage: 68 Tests | All Passing ✅**
 
-- **Java Unit Tests**: 44 tests | 100% passing
+- **Java Unit Tests**: 49 tests | 100% passing
 - **Python Integration Tests**: 19 tests | 100% passing
 - **Net Settlement Engine**: NEW - Fully tested (8 Java + 2 Python)
 - **Database Schema**: Complete with Phase 4 (BIN routing + multi-party + net settlement)
 
 ---
 
-## 🟢 Java Unit Tests (44/44 Passing)
+## 🟢 Java Unit Tests (49/49 Passing)
 
 ### NetSettlementService Tests (8/8)
 Tests for the financial net settlement computation engine:
@@ -63,13 +63,18 @@ Full test suite for ISO8583 protocol, security, routing, persistence:
 - ✅ Timeout retry logic
 - ✅ Reversal auto-triggering
 
-**Reconciliation & Reversal (6 tests)**:
+**Reconciliation & Reversal (11 tests)**:
 - ✅ Timeout reversal (0400)
 - ✅ Decline no-reversal (RC=05)
 - ✅ Reversal idempotency
 - ✅ Auto-reversal service
 - ✅ Reconciliation queries
 - ✅ Duplicate message handling
+- ✅ Chaos: DB down injection handling
+- ✅ Chaos: MUX hard-down retry exhaustion
+- ✅ Chaos: partial failure continuation
+- ✅ Chaos: retry storm bounded backoff
+- ✅ Concurrency: parallel reversal burst stress
 
 **Persistence (5 tests)**:
 - ✅ Transaction insert
@@ -136,7 +141,7 @@ Full test suite for ISO8583 protocol, security, routing, persistence:
 | **Net Settlement**     | **10**     | **✅** | **100%** |
 | Concurrency            | 2          | ✅     | 100%     |
 | Integration            | 1          | ✅     | 100%     |
-| **TOTAL**              | **63**     | **✅** | **100%** |
+| **TOTAL**              | **68**     | **✅** | **100%** |
 
 ### Net Settlement Feature Details
 
@@ -199,7 +204,7 @@ Full test suite for ISO8583 protocol, security, routing, persistence:
 ```
 Compiling 27 source files with javac [Java 25]
 Compiling 9 test files
-Tests run: 44
+Tests run: 49
 Failures: 0
 Errors: 0
 Skipped: 0
@@ -268,9 +273,9 @@ Collected 19 items
 ## 📈 Regression Status
 
 **No Regressions Detected**: All existing tests continue to pass with new features:
-- 36 existing Java tests: PASS ✅
+- 41 existing Java tests: PASS ✅
 - 17 existing Python tests: PASS ✅
-- 8 new Java tests: PASS ✅
+- 13 new Java tests: PASS ✅
 - 2 new Python tests: PASS ✅
 
 ---
