@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Table, Button, Space, Modal, Form, Input, message } from 'antd'
+import { Card, Table, Button, Space, Modal, Form, Input, message, Select, Tabs } from 'antd'
 import { SearchOutlined, EyeOutlined } from '@ant-design/icons'
 import { transactionAPI } from '../services/api'
 
@@ -8,6 +8,8 @@ export default function Transactions() {
   const [loading, setLoading] = useState(false)
   const [form] = Form.useForm()
   const [selectedTx, setSelectedTx] = useState(null)
+  const [events, setEvents] = useState([])
+  const [eventsLoading, setEventsLoading] = useState(false)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
 
   useEffect(() => {
@@ -17,7 +19,22 @@ export default function Transactions() {
   const fetchTransactions = async (params = {}) => {
     setLoading(true)
     try {
-      const response = await transactionAPI.list(params)
+      const hasDirectSearch = !!(params.stan || params.rrn)
+      const response = hasDirectSearch
+        ? await transactionAPI.search({
+            stan: params.stan || undefined,
+            rrn: params.rrn || undefined,
+            limit: params.limit || 50,
+            offset: 0,
+          })
+        : await transactionAPI.list({
+            status: params.status || undefined,
+            scheme: params.scheme || undefined,
+            issuer_id: params.issuer_id || undefined,
+            settled: typeof params.settled === 'boolean' ? params.settled : undefined,
+            limit: params.limit || 50,
+            offset: 0,
+          })
       setTransactions(Array.isArray(response.data) ? response.data : [])
     } catch (error) {
       message.error('Failed to fetch transactions')
@@ -34,7 +51,21 @@ export default function Transactions() {
 
   const handleViewDetails = (record) => {
     setSelectedTx(record)
+    loadEvents(record.id)
     setDetailsModalOpen(true)
+  }
+
+  const loadEvents = async (id) => {
+    setEventsLoading(true)
+    try {
+      const response = await transactionAPI.getEvents(id)
+      setEvents(Array.isArray(response.data) ? response.data : [])
+    } catch (error) {
+      setEvents([])
+      message.error('Failed to load transaction events')
+    } finally {
+      setEventsLoading(false)
+    }
   }
 
   const columns = [
@@ -112,23 +143,74 @@ export default function Transactions() {
     },
   ]
 
+  const eventColumns = [
+    { title: 'Type', dataIndex: 'event_type', key: 'event_type', width: 140 },
+    { title: 'MTI', dataIndex: 'mti', key: 'mti', width: 90 },
+    { title: 'RC', dataIndex: 'rc', key: 'rc', width: 80 },
+    {
+      title: 'Time',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 180,
+      render: (text) => new Date(text).toLocaleString(),
+    },
+  ]
+
   return (
     <div>
       <Card className="card" style={{ marginBottom: '16px' }}>
         <div className="card-title">Search Transactions</div>
         <Form form={form} layout="vertical">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-            <Form.Item label="Transaction ID" name="transaction_id">
-              <Input size="small" placeholder="Filter by ID" />
-            </Form.Item>
             <Form.Item label="STAN" name="stan">
               <Input size="small" placeholder="Filter by STAN" />
             </Form.Item>
-            <Form.Item label="Status" name="status">
-              <Input size="small" placeholder="Filter by status" />
+            <Form.Item label="RRN" name="rrn">
+              <Input size="small" placeholder="Filter by RRN" />
             </Form.Item>
-            <Form.Item label="Response Code" name="response_code">
-              <Input size="small" placeholder="Filter by response code" />
+            <Form.Item label="Status" name="status">
+              <Select
+                size="small"
+                allowClear
+                placeholder="Select status"
+                options={[
+                  { value: 'APPROVED', label: 'APPROVED' },
+                  { value: 'DECLINED', label: 'DECLINED' },
+                  { value: 'SECURITY_DECLINE', label: 'SECURITY_DECLINE' },
+                  { value: 'TIMEOUT', label: 'TIMEOUT' },
+                  { value: 'REQUEST_RECEIVED', label: 'REQUEST_RECEIVED' },
+                  { value: 'AUTHORIZED', label: 'AUTHORIZED' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item label="Scheme" name="scheme">
+              <Select
+                size="small"
+                allowClear
+                placeholder="Select scheme"
+                options={[
+                  { value: 'LOCAL', label: 'LOCAL' },
+                  { value: 'VISA', label: 'VISA' },
+                  { value: 'MC', label: 'MC' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item label="Issuer ID" name="issuer_id">
+              <Input size="small" placeholder="e.g. BANK_A" />
+            </Form.Item>
+            <Form.Item label="Settled" name="settled">
+              <Select
+                size="small"
+                allowClear
+                placeholder="All"
+                options={[
+                  { value: true, label: 'Settled' },
+                  { value: false, label: 'Unsettled' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item label="Limit" name="limit" initialValue={50}>
+              <Input size="small" placeholder="50" />
             </Form.Item>
           </div>
           <div>
@@ -165,35 +247,60 @@ export default function Transactions() {
         width={700}
       >
         {selectedTx && (
-          <div style={{ fontSize: '12px' }}>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>Transaction ID:</strong> {selectedTx.id}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>STAN:</strong> {selectedTx.stan}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>RRN:</strong> {selectedTx.rrn}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>Amount:</strong> ${parseFloat(selectedTx.amount).toFixed(2)}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>Status:</strong> {selectedTx.status}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>Response Code:</strong> {selectedTx.rc}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>Retry Count:</strong> {selectedTx.retry_count}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>Created At:</strong> {new Date(selectedTx.created_at).toLocaleString()}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>Updated At:</strong> {new Date(selectedTx.updated_at).toLocaleString()}
-            </div>
-          </div>
+          <Tabs
+            items={[
+              {
+                key: 'details',
+                label: 'Details',
+                children: (
+                  <div style={{ fontSize: '12px' }}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>Transaction ID:</strong> {selectedTx.id}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>STAN:</strong> {selectedTx.stan}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>RRN:</strong> {selectedTx.rrn}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>Amount:</strong> ${parseFloat(selectedTx.amount).toFixed(2)}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>Status:</strong> {selectedTx.status}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>Response Code:</strong> {selectedTx.rc}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>Retry Count:</strong> {selectedTx.retry_count}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>Created At:</strong> {new Date(selectedTx.created_at).toLocaleString()}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>Updated At:</strong> {new Date(selectedTx.updated_at).toLocaleString()}
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: 'events',
+                label: `Events (${events.length})`,
+                children: (
+                  <Table
+                    dataSource={events}
+                    columns={eventColumns}
+                    rowKey="id"
+                    loading={eventsLoading}
+                    size="small"
+                    bordered
+                    pagination={{ pageSize: 10 }}
+                  />
+                ),
+              },
+            ]}
+          />
         )}
       </Modal>
     </div>

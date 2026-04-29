@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, Table, Button, Space, Modal, Statistic, Row, Col, message, Spin } from 'antd'
+import { Card, Table, Button, Space, Modal, Statistic, Row, Col, message, Spin, Form, Input, DatePicker } from 'antd'
 import { PlayCircleOutlined, ReloadOutlined, FileOutlined } from '@ant-design/icons'
 import { settlementAPI } from '../services/api'
 
@@ -9,6 +9,8 @@ export default function Settlement() {
   const [running, setRunning] = useState(false)
   const [selectedBatch, setSelectedBatch] = useState(null)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
+  const [filteredBatches, setFilteredBatches] = useState([])
+  const [form] = Form.useForm()
 
   useEffect(() => {
     fetchBatches()
@@ -18,7 +20,9 @@ export default function Settlement() {
     setLoading(true)
     try {
       const response = await settlementAPI.getBatches({ limit: 100 })
-      setBatches(Array.isArray(response.data) ? response.data : [])
+      const items = Array.isArray(response.data) ? response.data : []
+      setBatches(items)
+      setFilteredBatches(items)
     } catch (error) {
       message.error('Failed to fetch settlement batches')
       console.error(error)
@@ -28,6 +32,13 @@ export default function Settlement() {
   }
 
   const handleRunSettlement = async () => {
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      message.error('Login required. Please sign in again.')
+      return
+    }
+
+    const settlementDate = form.getFieldValue('settlement_date')
     Modal.confirm({
       title: 'Run Settlement',
       content: 'Are you sure you want to run the settlement process? This will process all pending transactions.',
@@ -36,7 +47,11 @@ export default function Settlement() {
       onOk: async () => {
         setRunning(true)
         try {
-          const response = await settlementAPI.run()
+          const params = {}
+          if (settlementDate) {
+            params.settlement_date = settlementDate.format('YYYY-MM-DD')
+          }
+          const response = await settlementAPI.run(params)
           message.success(`Settlement completed: ${response.data.settled_count} transactions settled`)
           fetchBatches()
         } catch (error) {
@@ -47,6 +62,26 @@ export default function Settlement() {
         }
       },
     })
+  }
+
+  const applyFilters = () => {
+    const { batch_id, min_count } = form.getFieldsValue()
+    const min = min_count ? Number(min_count) : null
+    const filtered = batches.filter((b) => {
+      if (batch_id && !String(b.batch_id || '').toLowerCase().includes(String(batch_id).toLowerCase())) {
+        return false
+      }
+      if (min !== null && Number(b.total_count || 0) < min) {
+        return false
+      }
+      return true
+    })
+    setFilteredBatches(filtered)
+  }
+
+  const resetFilters = () => {
+    form.resetFields(['batch_id', 'min_count'])
+    setFilteredBatches(batches)
   }
 
   const handleViewBatch = async (batchId) => {
@@ -140,6 +175,23 @@ export default function Settlement() {
         <div style={{ fontSize: '12px', marginBottom: '16px' }}>
           Run the settlement process to batch and settle all pending transactions.
         </div>
+        <Form form={form} layout="inline" style={{ marginBottom: 12 }}>
+          <Form.Item label="Settlement Date" name="settlement_date">
+            <DatePicker size="small" />
+          </Form.Item>
+          <Form.Item label="Batch ID" name="batch_id">
+            <Input size="small" placeholder="Filter batch id" />
+          </Form.Item>
+          <Form.Item label="Min Count" name="min_count">
+            <Input size="small" placeholder="0" />
+          </Form.Item>
+          <Form.Item>
+            <Space>
+              <Button type="primary" size="small" onClick={applyFilters}>Apply Filters</Button>
+              <Button size="small" onClick={resetFilters}>Reset Filters</Button>
+            </Space>
+          </Form.Item>
+        </Form>
         <Space>
           <Button
             type="primary"
@@ -164,7 +216,7 @@ export default function Settlement() {
       <Card className="card">
         <div className="card-title">Settlement Batches</div>
         <Table
-          dataSource={batches}
+          dataSource={filteredBatches}
           columns={columns}
           rowKey="batch_id"
           loading={loading}

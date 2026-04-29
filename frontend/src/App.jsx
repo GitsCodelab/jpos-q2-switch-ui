@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Layout, Menu, Button, Dropdown, Avatar, Space } from 'antd'
-import { UserOutlined, LogoutOutlined, DashboardOutlined, UnorderedListOutlined, ReconciliationOutlined, DollarOutlined } from '@ant-design/icons'
+import { UserOutlined, LogoutOutlined, DashboardOutlined, UnorderedListOutlined, ReconciliationOutlined, DollarOutlined, ApartmentOutlined, DeploymentUnitOutlined } from '@ant-design/icons'
 import Transactions from './pages/Transactions'
 import Reconciliation from './pages/Reconciliation'
 import Settlement from './pages/Settlement'
 import Dashboard from './pages/Dashboard'
+import NetSettlement from './pages/NetSettlement'
+import Routing from './pages/Routing'
 import Login from './pages/Login'
 
 const { Header, Sider, Content } = Layout
@@ -74,6 +76,16 @@ export default function App() {
       icon: <DollarOutlined />,
       label: 'Settlement',
     },
+    {
+      key: 'net-settlement',
+      icon: <ApartmentOutlined />,
+      label: 'Net Settlement',
+    },
+    {
+      key: 'routing',
+      icon: <DeploymentUnitOutlined />,
+      label: 'Routing',
+    },
   ]
 
   const renderPage = () => {
@@ -86,6 +98,10 @@ export default function App() {
         return <Reconciliation />
       case 'settlement':
         return <Settlement />
+      case 'net-settlement':
+        return <NetSettlement />
+      case 'routing':
+        return <Routing />
       default:
         return <Dashboard />
     }

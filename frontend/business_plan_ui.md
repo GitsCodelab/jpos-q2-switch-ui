@@ -67,3 +67,38 @@ This UI represents a **Switch Control Panel** for monitoring and managing:
 # 🏁 Goal
 
 A clean, professional **Switch Control Panel UI** for operators.
+
+---
+
+# Implementation Coverage (Checked vs Plan)
+
+## Implemented Now
+
+- Dashboard
+	- Summary cards: implemented
+	- Status breakdown: implemented
+	- Volume trend: implemented
+- Transactions
+	- Table: implemented
+	- Search/filter: implemented (STAN/RRN direct search + status/scheme/issuer/settled filters)
+	- Details: implemented
+	- Events timeline: implemented
+- Reconciliation
+	- Issues/missing/reversal/summary: implemented
+	- Page-level filters: implemented (status + issue type)
+- Settlement
+	- Batch list/details/run: implemented
+	- Page-level filters: implemented (batch id + min count)
+	- Run with optional date: implemented
+- Net Settlement
+	- Positions/batch/summary: implemented
+	- Filters: implemented (party_id, batch_id)
+- Routing
+	- BIN table: implemented
+	- Terminals table: implemented
+	- Routing debug by PAN: implemented
+
+## Notes
+
+- Frontend pages now match backend payload shapes (direct list responses), so data appears correctly.
+- Settlement Run is validated against backend JWT flow.

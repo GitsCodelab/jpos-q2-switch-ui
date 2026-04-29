@@ -5,6 +5,8 @@ import { dashboardAPI, transactionAPI } from '../services/api'
 
 export default function Dashboard() {
   const [metrics, setMetrics] = useState(null)
+  const [statusRows, setStatusRows] = useState([])
+  const [volumeRows, setVolumeRows] = useState([])
   const [recentTx, setRecentTx] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -15,9 +17,10 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
-      const [summaryRes, statusRes, txRes] = await Promise.all([
+      const [summaryRes, statusRes, volumeRes, txRes] = await Promise.all([
         dashboardAPI.getSummary().catch(() => ({ data: {} })),
         dashboardAPI.getStatus().catch(() => ({ data: [] })),
+        dashboardAPI.getVolume().catch(() => ({ data: [] })),
         transactionAPI.list({ limit: 10 }).catch(() => ({ data: [] })),
       ])
 
@@ -33,6 +36,8 @@ export default function Dashboard() {
         failed: (statusMap.DECLINED || 0) + (statusMap.SECURITY_DECLINE || 0) + (statusMap.TIMEOUT || 0),
       }
       setMetrics(computed)
+      setStatusRows(Array.isArray(statusRes.data) ? statusRes.data : [])
+      setVolumeRows(Array.isArray(volumeRes.data) ? volumeRes.data : [])
       setRecentTx(Array.isArray(txRes.data) ? txRes.data : [])
     } catch (error) {
       message.error('Failed to load dashboard data')
@@ -89,6 +94,17 @@ export default function Dashboard() {
       width: 140,
       render: (text) => new Date(text).toLocaleString(),
     },
+  ]
+
+  const statusColumns = [
+    { title: 'Status', dataIndex: 'status', key: 'status', width: 180 },
+    { title: 'Count', dataIndex: 'count', key: 'count', width: 100 },
+  ]
+
+  const volumeColumns = [
+    { title: 'Date', dataIndex: 'date', key: 'date', width: 140 },
+    { title: 'Count', dataIndex: 'count', key: 'count', width: 100 },
+    { title: 'Total Amount', dataIndex: 'total_amount', key: 'total_amount', width: 140 },
   ]
 
   return (
@@ -185,6 +201,35 @@ export default function Dashboard() {
             pagination={false}
           />
         </Card>
+
+        <Row gutter={16} style={{ marginTop: '16px' }}>
+          <Col xs={24} sm={12}>
+            <Card className="card">
+              <div className="card-title">Status Breakdown</div>
+              <Table
+                dataSource={statusRows}
+                columns={statusColumns}
+                rowKey={(r) => r.status}
+                size="small"
+                bordered
+                pagination={false}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Card className="card">
+              <div className="card-title">Volume Trend</div>
+              <Table
+                dataSource={volumeRows}
+                columns={volumeColumns}
+                rowKey={(r) => r.date}
+                size="small"
+                bordered
+                pagination={{ pageSize: 10 }}
+              />
+            </Card>
+          </Col>
+        </Row>
       </div>
     </Spin>
   )

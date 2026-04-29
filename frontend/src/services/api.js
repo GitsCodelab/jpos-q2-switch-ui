@@ -38,7 +38,9 @@ export const authAPI = {
 
 export const transactionAPI = {
   list: (params) => api.get('/transactions', { params }),
+  search: (params) => api.get('/transactions/search', { params }),
   get: (id) => api.get(`/transactions/${id}`),
+  getEvents: (id) => api.get(`/transactions/${id}/events`),
   create: (data) => api.post('/transactions', data),
 }
 
@@ -51,7 +53,7 @@ export const reconciliationAPI = {
 }
 
 export const settlementAPI = {
-  run: () => api.post('/settlement/run'),
+  run: (params) => api.post('/settlement/run', null, { params }),
   getBatches: (params) => api.get('/settlement/batches', { params }),
   getBatch: (batchId) => api.get(`/settlement/batches/${batchId}`),
 }
@@ -59,6 +61,19 @@ export const settlementAPI = {
 export const dashboardAPI = {
   getSummary: () => api.get('/dashboard/summary'),
   getStatus: () => api.get('/dashboard/status'),
+  getVolume: () => api.get('/dashboard/volume'),
+}
+
+export const netSettlementAPI = {
+  list: (params) => api.get('/net-settlement', { params }),
+  getSummary: () => api.get('/net-settlement/summary'),
+  getByBatch: (batchId) => api.get(`/net-settlement/${batchId}`),
+}
+
+export const configAPI = {
+  listBins: (params) => api.get('/bins', { params }),
+  listTerminals: (params) => api.get('/terminals', { params }),
+  getRoutingDecision: (pan) => api.get(`/routing/${pan}`),
 }
 
 export default api
