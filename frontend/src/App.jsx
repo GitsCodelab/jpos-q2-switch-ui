@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Layout, Menu, Button, Dropdown, Avatar, Space, Spin } from 'antd'
-import { UserOutlined, LogoutOutlined, DashboardOutlined, UnorderedListOutlined, ReconciliationOutlined, DollarOutlined, ApartmentOutlined, DeploymentUnitOutlined } from '@ant-design/icons'
+import { UserOutlined, LogoutOutlined, DashboardOutlined, UnorderedListOutlined, ReconciliationOutlined, DollarOutlined, ApartmentOutlined, DeploymentUnitOutlined, AlertOutlined } from '@ant-design/icons'
 
 const Transactions = lazy(() => import('./pages/Transactions'))
 const Reconciliation = lazy(() => import('./pages/Reconciliation'))
@@ -8,6 +8,7 @@ const Settlement = lazy(() => import('./pages/Settlement'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const NetSettlement = lazy(() => import('./pages/NetSettlement'))
 const Routing = lazy(() => import('./pages/Routing'))
+const Fraud = lazy(() => import('./pages/Fraud'))
 const Login = lazy(() => import('./pages/Login'))
 
 const { Header, Sider, Content } = Layout
@@ -91,6 +92,11 @@ export default function App() {
       icon: <DeploymentUnitOutlined />,
       label: 'Routing',
     },
+    {
+      key: 'fraud',
+      icon: <AlertOutlined />,
+      label: 'Fraud',
+    },
   ]
 
   const renderPage = () => {
@@ -107,6 +113,8 @@ export default function App() {
         return <NetSettlement />
       case 'routing':
         return <Routing />
+      case 'fraud':
+        return <Fraud />
       default:
         return <Dashboard />
     }
@@ -163,7 +171,7 @@ export default function App() {
           }}
         >
           <div style={{ fontSize: '16px', fontWeight: '600', color: '#1d2d3e' }}>
-            Core Banking Dashboard
+            jPos - UX 
           </div>
           {username ? (
             <Dropdown menu={userMenu}>

@@ -4,6 +4,7 @@ import com.qswitch.dao.EventDAO;
 import com.qswitch.dao.DatabaseSupport;
 import com.qswitch.dao.TransactionDAO;
 import com.qswitch.dao.TransactionMetaDAO;
+import com.qswitch.fraud.FraudDecision;
 import com.qswitch.model.Transaction;
 import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOMsg;
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.SQLException;
 
+import java.util.StringJoiner;
 import java.util.Optional;
 
 public class TransactionService {
@@ -127,6 +129,24 @@ public class TransactionService {
 
     public int incrementRetryCount(String stan, String rrn) {
         return transactionDAO.incrementRetryCount(stan, rrn);
+    }
+
+    public void persistFraudDecision(ISOMsg request, FraudDecision decision) {
+        String stan = fieldOrDefault(request, 11, "000000");
+        String rrn = fieldOrDefault(request, 37, "000000000000");
+        String mti = fieldOrNull(request, 0);
+        String eventType = decision.isDecline() ? "FRAUD_DECLINE" : "FRAUD_FLAG";
+        StringJoiner joiner = new StringJoiner(",");
+        for (String reason : decision.getReasons()) {
+            joiner.add(reason);
+        }
+        String message = "score=" + decision.getRiskScore() + ";reasons=" + joiner;
+
+        if (!DatabaseSupport.isJdbcEnabled()) {
+            return;
+        }
+
+        withTransaction(connection -> eventDAO.saveIsoEvent(connection, stan, rrn, mti, eventType, message, null, null));
     }
 
     private String mapRcToStatus(String rc, String eventType) {

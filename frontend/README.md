@@ -8,6 +8,9 @@ React + Ant Design frontend for the jPOS Core Banking Dashboard with SAP UI5 (Fi
 - **Transactions**: Search, filter, and view transaction details
 - **Reconciliation**: Monitor issues, missing transactions, and reversal candidates
 - **Settlement**: Manage settlement batches and settlement operations
+- **Net Settlement**: View net positions and batch summaries
+- **Routing**: Inspect BIN/terminal routing and PAN route decisions
+- **Fraud**: Dashboard, Alerts, Rules, Blacklist, Cases, Transactions, and live Fraud Check
 - **JWT Authentication**: Secure login with JWT tokens from backend API
 - **Responsive Design**: Mobile-friendly layout with Ant Design components
 - **Compact UI**: Optimized for banking/fintech dashboards
@@ -69,7 +72,10 @@ src/
 │   ├── Dashboard.jsx          # Key metrics overview
 │   ├── Transactions.jsx       # Transaction search and details
 │   ├── Reconciliation.jsx     # Reconciliation dashboard with tabs
-│   └── Settlement.jsx         # Settlement batches and operations
+│   ├── Settlement.jsx         # Settlement batches and operations
+│   ├── NetSettlement.jsx      # Net settlement positions and summary
+│   ├── Routing.jsx            # BIN/terminal configuration and route checks
+│   └── Fraud.jsx              # Fraud monitoring and operator actions
 ├── services/
 │   └── api.js                 # Axios API client with JWT interceptors
 ├── components/                # Reusable components (coming soon)
@@ -131,7 +137,22 @@ The frontend integrates with the FastAPI backend on `http://localhost:8000`:
 - `GET /settlement/batches/{batch_id}` - Get batch details
 
 ### Dashboard Endpoints
-- `GET /dashboard/metrics` - Get dashboard metrics
+- `GET /dashboard/summary` - Get dashboard summary metrics
+- `GET /dashboard/status` - Get status distribution
+- `GET /dashboard/volume` - Get daily volume metrics
+
+### Fraud Endpoints
+- `GET /fraud/dashboard` - Fraud KPIs
+- `GET /fraud/alerts` - Alerts queue
+- `POST /fraud/alerts/{id}/action` - ACK/CLOSE/ESCALATE alert
+- `GET /fraud/rules` - Fraud rules list
+- `POST /fraud/rules` - Create fraud rule
+- `GET /fraud/blacklist` - Blacklist list
+- `POST /fraud/blacklist` - Add blacklist entry
+- `GET /fraud/cases` - Fraud cases list
+- `POST /fraud/cases` - Create fraud case
+- `GET /fraud/flagged-transactions` - List flagged/declined transactions with risk scores
+- `POST /fraud/check` - Run rule check on a transaction payload
 
 ## 🔧 Development
 

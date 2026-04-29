@@ -96,3 +96,57 @@ class NetSettlement(Base):
     settlement_date = Column(Date)
     batch_id = Column(String(32))
     created_at = Column(TIMESTAMP, server_default=func.now())
+
+
+class FraudRule(Base):
+    __tablename__ = "fraud_rules"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    name = Column(String(100), nullable=False, unique=True)
+    rule_type = Column(String(32), nullable=False)
+    threshold = Column(Integer, nullable=False)
+    window_seconds = Column(Integer)
+    weight = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+
+class BlacklistEntry(Base):
+    __tablename__ = "blacklist"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    entry_type = Column(String(16), nullable=False)
+    value = Column(String(64), nullable=False, unique=True)
+    reason = Column(String(255))
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+
+class FraudAlert(Base):
+    __tablename__ = "fraud_alerts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    stan = Column(String(12))
+    rrn = Column(String(12))
+    severity = Column(String(16), nullable=False)
+    risk_score = Column(Integer, nullable=False)
+    decision = Column(String(16), nullable=False)
+    rule_hits = Column(Text)
+    status = Column(String(16), nullable=False, default="OPEN")
+    assignee = Column(String(64))
+    note = Column(Text)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+
+class FraudCase(Base):
+    __tablename__ = "fraud_cases"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    alert_id = Column(Integer)
+    status = Column(String(16), nullable=False, default="OPEN")
+    assigned_to = Column(String(64))
+    summary = Column(String(255), nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())

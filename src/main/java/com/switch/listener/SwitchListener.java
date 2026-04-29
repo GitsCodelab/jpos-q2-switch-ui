@@ -2,6 +2,8 @@ package com.qswitch.listener;
 
 import com.qswitch.dao.EventDAO;
 import com.qswitch.dao.TransactionDAO;
+import com.qswitch.fraud.FraudDecision;
+import com.qswitch.fraud.FraudEngine;
 import com.qswitch.model.Transaction;
 import com.qswitch.recon.DBConnectionManager;
 import com.qswitch.routing.BinDAO;
@@ -26,11 +28,17 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
 
     private final TransactionService transactionService;
     private final SecurityService securityService;
+    private final FraudEngine fraudEngine;
     private final BinDAO binDAO;
     private boolean debugEnabled;
 
     public SwitchListener() {
-        this(new TransactionService(new TransactionDAO(), new EventDAO()), new SecurityService(), new BinDAO(DBConnectionManager.getDataSource()));
+        this(
+            new TransactionService(new TransactionDAO(), new EventDAO()),
+            new SecurityService(),
+            new FraudEngine(),
+            new BinDAO(DBConnectionManager.getDataSource())
+        );
     }
 
     @Override
@@ -41,16 +49,21 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
     }
 
     public SwitchListener(TransactionService transactionService) {
-        this(transactionService, new SecurityService(), new BinDAO(DBConnectionManager.getDataSource()));
+        this(transactionService, new SecurityService(), new FraudEngine(), new BinDAO(DBConnectionManager.getDataSource()));
     }
 
     public SwitchListener(TransactionService transactionService, SecurityService securityService) {
-        this(transactionService, securityService, new BinDAO(DBConnectionManager.getDataSource()));
+        this(transactionService, securityService, new FraudEngine(), new BinDAO(DBConnectionManager.getDataSource()));
     }
 
     public SwitchListener(TransactionService transactionService, SecurityService securityService, BinDAO binDAO) {
+        this(transactionService, securityService, new FraudEngine(), binDAO);
+    }
+
+    public SwitchListener(TransactionService transactionService, SecurityService securityService, FraudEngine fraudEngine, BinDAO binDAO) {
         this.transactionService = transactionService;
         this.securityService = securityService;
+        this.fraudEngine = fraudEngine;
         this.binDAO = binDAO;
     }
 
@@ -71,6 +84,18 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
                 resp.set(39, security.getResponseCode());
                 safeSend(source, request, resp, "SECURITY DECLINE", "SECURITY_DECLINE");
                 return true;
+            }
+
+            FraudDecision fraudDecision = fraudEngine.evaluate(request, amount);
+            if (fraudDecision.isDecline()) {
+                transactionService.persistFraudDecision(request, fraudDecision);
+                ISOMsg resp = buildBaseResponse(request, stan, rrn);
+                resp.set(39, "05");
+                safeSend(source, request, resp, "FRAUD DECLINE", "FRAUD_DECLINE");
+                return true;
+            }
+            if (fraudDecision.isFlag()) {
+                transactionService.persistFraudDecision(request, fraudDecision);
             }
 
             // ---------------- BIN ROUTING ----------------

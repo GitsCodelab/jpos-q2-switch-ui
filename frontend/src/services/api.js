@@ -76,4 +76,18 @@ export const configAPI = {
   getRoutingDecision: (pan) => api.get(`/routing/${pan}`),
 }
 
+export const fraudAPI = {
+  getDashboard: () => api.get('/fraud/dashboard'),
+  getAlerts: (params) => api.get('/fraud/alerts', { params }),
+  actionAlert: (id, data) => api.post(`/fraud/alerts/${id}/action`, data),
+  getRules: () => api.get('/fraud/rules'),
+  createRule: (data) => api.post('/fraud/rules', data),
+  getBlacklist: () => api.get('/fraud/blacklist'),
+  createBlacklist: (data) => api.post('/fraud/blacklist', data),
+  runCheck: (data) => api.post('/fraud/check', data),
+  getCases: () => api.get('/fraud/cases'),
+  createCase: (data) => api.post('/fraud/cases', data),
+  getFlaggedTransactions: (params) => api.get('/fraud/flagged-transactions', { params }),
+}
+
 export default api

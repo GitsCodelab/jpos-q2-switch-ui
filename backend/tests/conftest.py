@@ -43,6 +43,10 @@ def setup_db():
     # Seed transactions
     from app.models import (
         Bin,
+        BlacklistEntry,
+        FraudAlert,
+        FraudCase,
+        FraudRule,
         NetSettlement,
         SettlementBatch,
         Terminal,
@@ -110,6 +114,40 @@ def setup_db():
                       settlement_date=date(2026, 4, 28), batch_id="BATCH-TEST001"),
         NetSettlement(id=2, party_id="BANK_B", net_amount=-15000,
                       settlement_date=date(2026, 4, 28), batch_id="BATCH-TEST001"),
+    ])
+
+    db.add_all([
+        FraudRule(id=1, name="HIGH_AMOUNT_10K", rule_type="HIGH_AMOUNT", threshold=10000, weight=60, is_active=True),
+        FraudRule(id=2, name="VELOCITY_3_IN_60", rule_type="VELOCITY", threshold=3, window_seconds=60, weight=30, is_active=True),
+    ])
+
+    db.add_all([
+        BlacklistEntry(id=1, entry_type="TERMINAL", value="TERM9999", reason="compromised", is_active=True),
+        BlacklistEntry(id=2, entry_type="BIN", value="999999", reason="test block", is_active=True),
+    ])
+
+    db.add_all([
+        FraudAlert(
+            id=1,
+            stan="000001",
+            rrn="RRN000001",
+            severity="MEDIUM",
+            risk_score=55,
+            decision="FLAG",
+            rule_hits="RULE:HIGH_AMOUNT_10K",
+            status="OPEN",
+            created_at=datetime(2026, 4, 28, 10, 0, 0),
+        ),
+    ])
+
+    db.add_all([
+        FraudCase(
+            id=1,
+            alert_id=1,
+            status="OPEN",
+            assigned_to="analyst-a",
+            summary="Investigate flagged transaction",
+        ),
     ])
 
     db.commit()

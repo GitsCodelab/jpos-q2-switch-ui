@@ -9,7 +9,7 @@ The project now includes a frontend app in `frontend/` with:
 - React + Vite
 - Ant Design (compact SAP UI5/Fiori-inspired theme)
 - JWT login flow to backend `/auth/login`
-- Pages: Dashboard, Transactions, Reconciliation, Settlement
+- Pages: Dashboard, Transactions, Reconciliation, Settlement, Net Settlement, Routing, Fraud
 
 Quick start:
 
@@ -66,6 +66,13 @@ cd /home/samehabib/jpos-q2-switch
 docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f pg/migration-phase4.sql
 ```
 
+3.1 Apply Fraud V2 migration (rules, alerts, blacklist, cases):
+
+```bash
+cd /home/samehabib/jpos-q2-switch-ui
+docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f pg/migration-fraud-v2.sql
+```
+
 4. Seed settlement/routing sample data (recommended for tests):
 
 ```bash
@@ -95,6 +102,10 @@ Expected core tables include:
 - `terminals`
 - `settlement_batches`
 - `net_settlement`
+- `fraud_rules`
+- `blacklist`
+- `fraud_alerts`
+- `fraud_cases`
 
 Optional quick validation run:
 
@@ -115,6 +126,40 @@ cd /home/samehabib/jpos-q2-switch-ui
 
 This sends real ISO requests at runtime and prints per-worker and total response-code counters.
 Use this when you want traffic-driven persistence and load behavior validation.
+
+For a single-message simulator (with a built-in default ISO message and optional overrides):
+
+```bash
+cd /home/samehabib/jpos-q2-switch-ui
+/home/samehabib/jpos-q2-switch-ui/.venv/bin/python python_tests/single_iso_simulator.py
+```
+
+Override values with `--field`:
+
+```bash
+/home/samehabib/jpos-q2-switch-ui/.venv/bin/python python_tests/single_iso_simulator.py \
+	--field 4=000000020000 \
+	--field 41=TERM9999 \
+	--field 11=777777
+```
+
+Or use a **device profile** with predefined fields for realistic test scenarios:
+
+```bash
+# ATM withdrawal (100.00 in minor units)
+/home/samehabib/jpos-q2-switch-ui/.venv/bin/python python_tests/single_iso_simulator.py --profile atm
+
+# POS purchase (50.00 in minor units)
+/home/samehabib/jpos-q2-switch-ui/.venv/bin/python python_tests/single_iso_simulator.py --profile pos
+
+# Transaction reversal (MTI 0420)
+/home/samehabib/jpos-q2-switch-ui/.venv/bin/python python_tests/single_iso_simulator.py --profile reversal
+
+# High-risk fraud test (9999.99 amount, blacklisted terminal)
+/home/samehabib/jpos-q2-switch-ui/.venv/bin/python python_tests/single_iso_simulator.py --profile fraud
+```
+
+Available profiles: `atm`, `pos`, `reversal`, `fraud` (all support further `--field` overrides)
 
 SQL seed scripts are still available for static dataset preparation, but they do not generate runtime traffic.
 
@@ -336,6 +381,38 @@ Light retry is enabled for routed timeout responses:
 A starter fraud rule is active for local processing paths:
 
 - if `amount > 100000` (minor units) -> `RC=05` decline.
+
+## Fraud Module V2
+
+Fraud module now includes both switch-time checks and operator APIs/UI.
+
+Switch-time checks:
+
+- jPOS fraud engine with decision actions: `APPROVE`, `FLAG`, `DECLINE`
+- Rules currently active in Java engine: high amount, terminal velocity, terminal blacklist, BIN blacklist
+- Decline action returns `RC=05`
+- Flag/decline decisions are persisted as transaction lifecycle events (`FRAUD_FLAG`, `FRAUD_DECLINE`)
+
+Backend API module:
+
+- `GET /fraud/dashboard`
+- `GET /fraud/alerts`
+- `POST /fraud/alerts/{id}/action`
+- `GET /fraud/rules`
+- `POST /fraud/rules`
+- `GET /fraud/blacklist`
+- `POST /fraud/blacklist`
+- `GET /fraud/cases`
+- `POST /fraud/cases`
+- `GET /fraud/flagged-transactions` *(new)* - List flagged/declined transactions with risk scores
+- `POST /fraud/check`
+
+Frontend module:
+
+- New Fraud page with tabs for Dashboard, Alerts, Rules, Blacklist, Check, Cases, and **Transactions** *(new)*
+- Transactions tab displays flagged/declined transactions with risk scores and rules triggered
+- Alert actions: `ACK`, `ESCALATE`, `CLOSE`
+- Manual fraud check tool for PAN/terminal/amount simulation
 
 ## Reconciliation Service
 

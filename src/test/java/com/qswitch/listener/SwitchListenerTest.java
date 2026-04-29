@@ -2,6 +2,8 @@ package com.qswitch.listener;
 
 import com.qswitch.dao.EventDAO;
 import com.qswitch.dao.TransactionDAO;
+import com.qswitch.fraud.FraudDecision;
+import com.qswitch.fraud.FraudEngine;
 import com.qswitch.model.Transaction;
 import com.qswitch.service.SecurityService;
 import com.qswitch.service.TransactionService;
@@ -85,6 +87,25 @@ class SwitchListenerTest {
         assertEquals("96", source.lastSent.getString(39));
         assertEquals("000000", source.lastSent.getString(11));
         assertEquals("000000000000", source.lastSent.getString(37));
+    }
+
+    @Test
+    void shouldSend05WhenFraudEngineDeclines() throws Exception {
+        SwitchListener listener = new SwitchListener(
+            new TransactionService(new TransactionDAO(), new EventDAO()),
+            new StubSecurityService(SecurityService.ValidationResult.valid(), false, null),
+            new StubFraudEngine(FraudDecision.Action.DECLINE),
+            new StubBinDao()
+        );
+
+        CapturingSource source = new CapturingSource();
+        ISOMsg request = buildRequest("0200", "787878", "565656565656", "000000000100");
+
+        boolean processed = listener.process(source, request);
+
+        assertTrue(processed);
+        assertNotNull(source.lastSent);
+        assertEquals("05", source.lastSent.getString(39));
     }
 
     @Test
@@ -279,6 +300,30 @@ class SwitchListenerTest {
         @Override
         public byte[] generateResponseMac(ISOMsg request, ISOMsg response) {
             return responseMac;
+        }
+    }
+
+    private static final class StubFraudEngine extends FraudEngine {
+        private final FraudDecision.Action action;
+
+        private StubFraudEngine(FraudDecision.Action action) {
+            this.action = action;
+        }
+
+        @Override
+        public FraudDecision evaluate(ISOMsg request, long amountMinor) {
+            return new FraudDecision(action, 95, java.util.List.of("TEST_RULE"));
+        }
+    }
+
+    private static final class StubBinDao extends com.qswitch.routing.BinDAO {
+        private StubBinDao() {
+            super(null);
+        }
+
+        @Override
+        public com.qswitch.routing.Bin findByBin(String bin) {
+            return null;
         }
     }
 }

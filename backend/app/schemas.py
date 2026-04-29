@@ -147,3 +147,120 @@ class DashboardVolumeOut(BaseModel):
 class ErrorResponse(BaseModel):
     code: str
     message: str
+
+
+# - Fraud ---------------------------------------------------------------------
+class FraudRuleOut(_ORM):
+    id: int
+    name: str
+    rule_type: str
+    threshold: int
+    window_seconds: Optional[int] = None
+    weight: int
+    is_active: bool
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class FraudRuleCreate(BaseModel):
+    name: str
+    rule_type: str
+    threshold: int
+    window_seconds: Optional[int] = None
+    weight: int = 0
+    is_active: bool = True
+
+
+class BlacklistEntryOut(_ORM):
+    id: int
+    entry_type: str
+    value: str
+    reason: Optional[str] = None
+    is_active: bool
+    created_at: Optional[datetime] = None
+
+
+class BlacklistEntryCreate(BaseModel):
+    entry_type: str
+    value: str
+    reason: Optional[str] = None
+    is_active: bool = True
+
+
+class FraudAlertOut(_ORM):
+    id: int
+    stan: Optional[str] = None
+    rrn: Optional[str] = None
+    severity: str
+    risk_score: int
+    decision: str
+    rule_hits: Optional[str] = None
+    status: str
+    assignee: Optional[str] = None
+    note: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class FraudAlertActionIn(BaseModel):
+    action: str
+    assignee: Optional[str] = None
+    note: Optional[str] = None
+
+
+class FraudCaseOut(_ORM):
+    id: int
+    alert_id: Optional[int] = None
+    status: str
+    assigned_to: Optional[str] = None
+    summary: str
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class FraudCaseCreate(BaseModel):
+    alert_id: Optional[int] = None
+    status: str = "OPEN"
+    assigned_to: Optional[str] = None
+    summary: str
+
+
+class FraudCheckIn(BaseModel):
+    pan: Optional[str] = None
+    amount: int
+    terminal_id: Optional[str] = None
+    stan: Optional[str] = None
+    rrn: Optional[str] = None
+
+
+class FraudCheckOut(BaseModel):
+    decision: str
+    risk_score: int
+    severity: str
+    triggers: list[str]
+
+
+class FraudDashboardOut(BaseModel):
+    total_alerts: int
+    open_alerts: int
+    flagged_count: int
+    declined_count: int
+    fraud_rate: float
+
+
+class FlaggedTransactionOut(BaseModel):
+    alert_id: int
+    stan: Optional[str] = None
+    rrn: Optional[str] = None
+    decision: str
+    risk_score: int
+    severity: str
+    rule_hits: Optional[str] = None
+    status: str
+    created_at: Optional[datetime] = None
+    # Transaction fields (may be None if no matching tx row)
+    terminal_id: Optional[str] = None
+    amount: Optional[int] = None
+    currency: Optional[str] = None
+    rc: Optional[str] = None
+    scheme: Optional[str] = None
