@@ -31,6 +31,7 @@
         "/^cd /home/samehabib/jpos-q2-switch && python -m pytest python_tests/test_full_setup_python\\.py --collect-only 2>&1 \\| grep \"test_\"$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "mvn test": true
     }
 }

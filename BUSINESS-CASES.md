@@ -113,7 +113,21 @@
 
 ---
 
-## 📊 11. Logging & Audit
+## � 11. Net Settlement Engine
+
+| Area                    | What to Test                   | Example                        | Expected Result                      | Priority |
+| ----------------------- | ------------------------------ | ------------------------------ | ------------------------------------ | -------- |
+| Bilateral Obligations   | Compute issuer → acquirer      | BANK_A → BANK_B: 100,000       | Aggregated by (issuer, acquirer)     | 🔴 High  |
+| Net Position Calculation| Reduce multiple flows          | A→B: 100k, B→A: 30k            | BANK_A: -70k, BANK_B: +70k           | 🔴 High  |
+| Conservation Property   | Sum of net positions           | All bilateral flows            | SUM(net_amount) = 0 per batch        | 🔴 High  |
+| Persistence             | Save net positions to table    | net_settlement insert          | One row per party per batch          | 🔴 High  |
+| Batch Reference         | Track settlement batch         | batch_id linking               | batch links transactions→net_settle  | 🔴 High  |
+| Zero Obligation Handling| Single direction flow          | Only A→B (no reverse)          | A: -amount, B: +amount (conserved)   | 🔴 High  |
+| Multi-Bank Netting      | 3+ banks with cross flows      | A↔B↔C triangle                 | All nets computed correctly          | 🔴 High  |
+
+---
+
+## 📊 12. Logging & Audit
 
 | Area             | What to Test    | Example        | Expected Result | Priority |
 | ---------------- | --------------- | -------------- | --------------- | -------- |
@@ -136,7 +150,8 @@
 | Reversal         | ✅        |
 | Routing (BIN)    | ✅        |
 | Fraud Starter    | ✅        |
-| Settlement/Net   | ✅        |
+| Settlement       | ✅        |
+| Net Settlement   | ✅        |
 | Concurrency      | ✅        |
 | Performance      | 🟡       |
 | Integration      | ✅        |
@@ -149,6 +164,7 @@
 * Start with: **Protocol + Lifecycle**
 * Then: **Failure + Reversal**
 * Then: **Persistence + Idempotency**
-* Finally: **Performance + Integration**
+* Then: **Routing (BIN) + Fraud**
+* Finally: **Net Settlement + Performance + Integration**
 
 👉 This order prevents false confidence
