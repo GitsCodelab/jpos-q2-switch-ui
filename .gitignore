@@ -6,7 +6,4 @@ __pycache__/
 .venv/
 lib/
 python_tests/BUSINESS_CASE_RESULTS.txt
-lib/switch-core.jar
-python_tests/BUSINESS_CASE_RESULTS.txt
-lib/switch-core.jar
-python_tests/BUSINESS_CASE_RESULTS.txt
+.vscode/settings.json
