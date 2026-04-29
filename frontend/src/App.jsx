@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react'
-import { Layout, Menu, Button, Dropdown, Avatar, Space } from 'antd'
+import { useState, useEffect, lazy, Suspense } from 'react'
+import { Layout, Menu, Button, Dropdown, Avatar, Space, Spin } from 'antd'
 import { UserOutlined, LogoutOutlined, DashboardOutlined, UnorderedListOutlined, ReconciliationOutlined, DollarOutlined, ApartmentOutlined, DeploymentUnitOutlined } from '@ant-design/icons'
-import Transactions from './pages/Transactions'
-import Reconciliation from './pages/Reconciliation'
-import Settlement from './pages/Settlement'
-import Dashboard from './pages/Dashboard'
-import NetSettlement from './pages/NetSettlement'
-import Routing from './pages/Routing'
-import Login from './pages/Login'
+
+const Transactions = lazy(() => import('./pages/Transactions'))
+const Reconciliation = lazy(() => import('./pages/Reconciliation'))
+const Settlement = lazy(() => import('./pages/Settlement'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const NetSettlement = lazy(() => import('./pages/NetSettlement'))
+const Routing = lazy(() => import('./pages/Routing'))
+const Login = lazy(() => import('./pages/Login'))
 
 const { Header, Sider, Content } = Layout
 
@@ -33,7 +34,11 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <Login />
+    return (
+      <Suspense fallback={<div style={{ padding: 24, textAlign: 'center' }}><Spin /></div>}>
+        <Login />
+      </Suspense>
+    )
   }
 
   const userMenu = {
@@ -129,7 +134,12 @@ export default function App() {
             textAlign: 'center',
           }}
         >
-          {!collapsed && 'jPOS Switch'}
+          {!collapsed && (
+            <Space>
+              <img src="https://jpos.org/img/logo.svg" alt="jPOS" width="20" height="20" />
+              <span>jPOS Switch</span>
+            </Space>
+          )}
         </div>
         <Menu
           theme="light"
@@ -174,7 +184,9 @@ export default function App() {
         </Header>
 
         <Content style={{ margin: '16px', minHeight: 'calc(100vh - 64px)' }}>
-          {renderPage()}
+          <Suspense fallback={<div style={{ padding: 24, textAlign: 'center' }}><Spin /></div>}>
+            {renderPage()}
+          </Suspense>
         </Content>
       </Layout>
     </Layout>

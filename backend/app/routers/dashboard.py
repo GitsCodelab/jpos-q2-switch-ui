@@ -1,9 +1,9 @@
 # routers/dashboard.py — Dashboard summary APIs
 from datetime import date
-from typing import List
-from fastapi import APIRouter, Depends
+from typing import List, Optional
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, text
+from sqlalchemy import func
 from app.db import get_db
 from app.models import Transaction
 from app.schemas import DashboardStatusOut, DashboardSummaryOut, DashboardVolumeOut
@@ -38,9 +38,14 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
 
 # ── GET /dashboard/status ─────────────────────────────────────────────────────
 @router.get("/status", response_model=List[DashboardStatusOut], summary="Status breakdown")
-def get_status_breakdown(db: Session = Depends(get_db)):
+def get_status_breakdown(
+    as_of: Optional[date] = Query(None, description="Filter statuses by transaction date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+):
+    target_date = as_of or date.today()
     rows = (
         db.query(Transaction.status, func.count(Transaction.id).label("count"))
+        .filter(func.date(Transaction.created_at) == target_date)
         .group_by(Transaction.status)
         .all()
     )

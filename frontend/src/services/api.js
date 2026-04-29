@@ -60,7 +60,7 @@ export const settlementAPI = {
 
 export const dashboardAPI = {
   getSummary: () => api.get('/dashboard/summary'),
-  getStatus: () => api.get('/dashboard/status'),
+  getStatus: (params) => api.get('/dashboard/status', { params }),
   getVolume: () => api.get('/dashboard/volume'),
 }
 

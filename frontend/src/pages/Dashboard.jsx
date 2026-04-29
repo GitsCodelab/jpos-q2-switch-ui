@@ -1,25 +1,27 @@
 import { useState, useEffect } from 'react'
-import { Card, Row, Col, Statistic, Table, message, Spin } from 'antd'
+import { Card, Row, Col, Statistic, Table, message, Spin, Input, Button, Space } from 'antd'
 import { ArrowUpOutlined } from '@ant-design/icons'
 import { dashboardAPI, transactionAPI } from '../services/api'
 
 export default function Dashboard() {
+  const today = new Date().toISOString().slice(0, 10)
   const [metrics, setMetrics] = useState(null)
   const [statusRows, setStatusRows] = useState([])
   const [volumeRows, setVolumeRows] = useState([])
   const [recentTx, setRecentTx] = useState([])
+  const [statusDate, setStatusDate] = useState(today)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchDashboardData()
+    fetchDashboardData(today)
   }, [])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (selectedDate = statusDate) => {
     setLoading(true)
     try {
       const [summaryRes, statusRes, volumeRes, txRes] = await Promise.all([
         dashboardAPI.getSummary().catch(() => ({ data: {} })),
-        dashboardAPI.getStatus().catch(() => ({ data: [] })),
+        dashboardAPI.getStatus({ as_of: selectedDate }).catch(() => ({ data: [] })),
         dashboardAPI.getVolume().catch(() => ({ data: [] })),
         transactionAPI.list({ limit: 10 }).catch(() => ({ data: [] })),
       ])
@@ -205,7 +207,37 @@ export default function Dashboard() {
         <Row gutter={16} style={{ marginTop: '16px' }}>
           <Col xs={24} sm={12}>
             <Card className="card">
-              <div className="card-title">Status Breakdown</div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <div className="card-title" style={{ marginBottom: 0 }}>Status Breakdown</div>
+                <Space>
+                  <Input
+                    size="small"
+                    type="date"
+                    value={statusDate}
+                    onChange={(e) => setStatusDate(e.target.value)}
+                    style={{ width: 150 }}
+                  />
+                  <Button size="small" type="primary" onClick={() => fetchDashboardData(statusDate)}>
+                    Apply
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => {
+                      setStatusDate(today)
+                      fetchDashboardData(today)
+                    }}
+                  >
+                    Today
+                  </Button>
+                </Space>
+              </div>
               <Table
                 dataSource={statusRows}
                 columns={statusColumns}
