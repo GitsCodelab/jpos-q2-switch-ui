@@ -1,0 +1,154 @@
+/* SAP UI5 / Fiori Inspired Styling */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 12px;
+}
+
+body {
+  font-family: "Segoe UI", "Roboto", "Helvetica Neue", "Arial", sans-serif;
+  background-color: #f5f6f7;
+  color: #1d2d3e;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Remove default margins from headings */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  padding: 0;
+}
+
+/* Global Layout */
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* Ant Design Overrides for Compact UI */
+.ant-layout {
+  background-color: #f5f6f7;
+}
+
+.ant-layout-sider {
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.ant-layout-header {
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+}
+
+.ant-layout-content {
+  background-color: #f5f6f7;
+  padding: 16px;
+}
+
+/* Menu items compact */
+.ant-menu {
+  border: none;
+  background-color: #ffffff;
+}
+
+.ant-menu-item {
+  margin: 0;
+  height: 32px;
+  line-height: 32px;
+  font-size: 12px;
+}
+
+/* Table compact */
+.ant-table {
+  font-size: 12px;
+}
+
+.ant-table-thead > tr > th {
+  background-color: #ffffff;
+  border-bottom: 1px solid #d8dce6;
+  font-weight: 600;
+  padding: 8px;
+}
+
+.ant-table-tbody > tr > td {
+  padding: 8px;
+  border-bottom: 1px solid #e8eaef;
+}
+
+.ant-table-row:hover > td {
+  background-color: #f0f4ff;
+}
+
+/* Form compact */
+.ant-form-item {
+  margin-bottom: 8px;
+}
+
+.ant-form-item-label > label {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Button compact */
+.ant-btn {
+  font-size: 12px;
+  height: 28px;
+  padding: 4px 12px;
+}
+
+.ant-btn-primary {
+  background-color: #0a6ed1;
+  border-color: #0a6ed1;
+}
+
+.ant-btn-primary:hover {
+  background-color: #0860b8;
+  border-color: #0860b8;
+}
+
+/* Input compact */
+.ant-input,
+.ant-input-number,
+.ant-select-selector {
+  font-size: 12px;
+  height: 28px;
+}
+
+.ant-input-number {
+  width: 100%;
+}
+
+/* Spacing utilities */
+.mt-8 { margin-top: 8px; }
+.mt-16 { margin-top: 16px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+.p-8 { padding: 8px; }
+.p-16 { padding: 16px; }
+
+/* Cards/Sections */
+.card {
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0a6ed1;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #d8dce6;
+  padding-bottom: 8px;
+}

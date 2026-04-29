@@ -1,16 +1,27 @@
-FROM node:20-alpine AS builder
+FROM node:18-alpine
 
-# Set working directory
 WORKDIR /app
+
+# Copy certificate for corporate SSL inspection
+COPY FG-SSL-INSPECTION.cer /usr/local/share/ca-certificates/
+RUN update-ca-certificates --fresh
+
+# Configure npm for SSL and mirror
+RUN npm config set cafile /etc/ssl/certs/ca-bundle.crt && \
+    npm config set strict-ssl false && \
+    npm config set registry https://registry.npmjs.org/
 
 # Copy package files
 COPY frontend/package*.json ./
 
-# Install dependencies (offline npm cache)
-RUN npm ci --prefer-offline --no-audit
+# Install dependencies
+RUN npm install --no-audit --no-fund
 
 # Copy source code
 COPY frontend/ .
 
-# Build React application
-RUN npm run build
+# Expose dev server port
+EXPOSE 5173
+
+# Run dev server
+CMD ["npm", "run", "dev", "--", "--host"]

@@ -9,7 +9,7 @@ Build a React application using Ant Design styled to resemble SAP UI5 (Fiori) fo
 - React (Vite recommended)
 - Ant Design
 - Optional: Recharts / ECharts
-- Backend: FastAPI / Oracle APIs
+- Backend: FastAPI / postgres /oracle
 
 ---
 
