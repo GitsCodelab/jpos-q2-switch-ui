@@ -21,6 +21,7 @@
         "/^cd /home/samehabib/jpos-q2-switch && python -m pytest python_tests/test_full_setup_python\\.py -v 2>&1 \\| tail -50$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "git commit": true
     }
 }

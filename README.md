@@ -615,6 +615,23 @@ mvn -q -DskipTests org.codehaus.mojo:exec-maven-plugin:3.5.0:java \
   -Dexec.mainClass=com.qswitch.settlement.MultiPartySettlementService
 ```
 
+#### Populate Sample Settlement Data
+
+If you're testing multi-party settlement and don't have real transaction data with issuer/acquirer populated, run this one-time data population:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+docker compose up -d
+docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f /dev/stdin < pg/populate-settlement-data.sql
+```
+
+This will:
+- Assign sample issuer banks (BANK_A, BANK_B, BANK_C) to existing transactions
+- Populate terminal IDs and map them to acquirer banks via the terminals table
+- Set scheme values (LOCAL, VISA, MC) based on issuer
+- Mark authorized transactions as settled and ready for netting
+- Generate sample settlement data for multi-party queries
+
 ### Query Examples
 
 Get net position from Bank A to Bank B:
