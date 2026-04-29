@@ -795,3 +795,56 @@ BANK_A_net + BANK_B_net + BANK_C_net + ... = 0
 ```
 
 This is verified in test `test_multi_party_settlement_schema_complete`.
+
+---
+
+## Backend REST API
+
+A FastAPI layer provides a REST interface over the jPOS PostgreSQL database for use by the React UI and external tools.
+
+### Stack
+
+```
+jPOS Q2 Switch (Java, port 9000)
+        ↓
+PostgreSQL jpos DB (port 5432)
+        ↓
+FastAPI Backend (Python, port 8000)
+        ↓
+React Frontend (port 3000 / 5173)
+```
+
+### Start the API
+
+```bash
+docker compose up -d --build jpos-backend
+```
+
+Then visit:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+- Health check: `http://localhost:8000/health`
+
+### API Overview
+
+| Phase | Prefix | Description |
+|-------|--------|-------------|
+| 1 | `/transactions` | List, search, detail, event timeline |
+| 2 | `/reconciliation` | Issues, missing responses, reversal candidates, summary |
+| 3 | `/settlement` | Batches, batch detail, trigger manual settlement |
+| 4 | `/net-settlement` | Net positions, party summary, by batch |
+| 5 | `/bins`, `/terminals`, `/routing` | BIN/terminal config and routing lookup |
+| 6 | `/dashboard` | Summary totals, status breakdown, daily volume |
+
+Full documentation: [backend/README.md](backend/README.md)  
+Test report: [backend/tests/TEST-REPORT.md](backend/tests/TEST-REPORT.md)
+
+### Run API Tests (no Docker required)
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r backend/requirements.txt
+python -m pytest backend/tests/ -v
+```
+
+**104 tests, 0 failures** across all 6 API phases.

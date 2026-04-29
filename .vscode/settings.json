@@ -33,6 +33,9 @@
             "matchCommandLine": true
         },
         "mvn test": true,
-        "mvn -q -Dtest=AutoReversalServiceTest test": true
+        "mvn -q -Dtest=AutoReversalServiceTest test": true,
+        "pip": true,
+        "true": true,
+        ".venv/bin/python": true
     }
 }

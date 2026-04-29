@@ -40,6 +40,40 @@ services:
       - jpos-net
     restart: unless-stopped
 
+  jpos-backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: jpos-backend
+    depends_on:
+      jpos-postgresql:
+        condition: service_started
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override localhost with Docker service names for container networking
+      POSTGRES_HOST: jpos-postgresql
+    ports:
+      - "8000:8000"
+    networks:
+      - jpos-net
+  
+  jpos-frontend:
+    image: node:18-alpine
+    container_name: jpos-frontend
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      jpos-backend:
+        condition: service_started
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+      - "5173:5173"
+    networks:
+      - jpos-net
 
 volumes:
   postgres-data:
