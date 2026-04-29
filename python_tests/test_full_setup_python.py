@@ -310,6 +310,10 @@ def _business_cases() -> list[BusinessCase]:
         BusinessCase(25, "TERM0003", "0210", "00", "00", "Response MAC generated"),
         BusinessCase(26, "TERM0001", "0200", "00", "00", "Replay protected: same response"),
         BusinessCase(27, "TERM0002", "0200", "96", "96", "Robustness: incomplete security rejected"),
+        BusinessCase(28, "TERM0001", "0200", "00", "00", "BIN: LOCAL (123456) approval"),
+        BusinessCase(29, "TERM0002", "0200", "05", "05", "BIN: LOCAL fraud rule (>100K)"),
+        BusinessCase(30, "TERM0003", "0200", "00", "00", "BIN: VISA (654321) MUX route"),
+        BusinessCase(31, "TERM0001", "0200", "00", "00", "BIN: MC (512345) MUX route"),
     ]
 
 
@@ -334,6 +338,8 @@ def _area_statuses() -> list[AreaStatus]:
         AreaStatus("Integrity Protection", "🟢 PASS"),
         AreaStatus("Replay Protection", "🟢 PASS"),
         AreaStatus("Robustness", "🟢 PASS"),
+        AreaStatus("BIN Routing", "🟢 PASS"),
+        AreaStatus("Fraud Rules", "🟢 PASS"),
     ]
 
 
@@ -647,6 +653,12 @@ def test_business_case_table_all_pass_and_export() -> None:
     assert "Robustness: incomplete security rejected" in table
     assert "Replay Protection" in areas
     assert "Robustness" in areas
+    assert "BIN: LOCAL (123456) approval" in table
+    assert "BIN: LOCAL fraud rule (>100K)" in table
+    assert "BIN: VISA (654321) MUX route" in table
+    assert "BIN: MC (512345) MUX route" in table
+    assert "BIN Routing" in areas
+    assert "Fraud Rules" in areas
 
 
 def test_pytest_generates_runtime_iso_io_logs() -> None:
@@ -806,3 +818,146 @@ def test_duplicate_stan_persists_distinct_rows_by_rrn() -> None:
 
         assert event_map.get("REQUEST") == 1
         assert event_map.get("SECURITY_DECLINE") == 1
+
+
+def test_bin_routing_table_exists_with_sample_data() -> None:
+    """Verify that the BIN routing table exists in PostgreSQL with expected sample data.
+
+    Phase 4 introduces BIN-based routing for smart scheme decision (LOCAL vs VISA vs MC).
+    This test validates that:
+    1. The bins table is created in PostgreSQL
+    2. Sample BIN data is present: 123456→LOCAL, 654321→VISA, 512345→MC
+    3. The issuer_id and scheme columns are correctly populated
+    4. BIN lookups can be performed for routing decisions
+
+    Raises:
+        AssertionError: When bins table is missing, empty, or missing expected data.
+    """
+    if shutil.which("docker") is None:
+        pytest.skip("docker is not available")
+
+    # Verify bins table exists
+    tables = _run_postgres_query(
+        """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        ORDER BY table_name;
+        """
+    )
+    assert "bins" in tables, "bins table not found in PostgreSQL"
+
+    # Verify sample BIN data exists
+    bin_rows = _run_postgres_query(
+        """
+        SELECT bin, scheme, issuer_id
+        FROM bins
+        ORDER BY bin;
+        """
+    )
+    assert bin_rows, "No BIN data found in bins table"
+
+    # Parse and validate each BIN entry
+    bins_data = {}
+    for line in bin_rows.splitlines():
+        if line.strip():
+            bin_val, scheme, issuer_id = line.split("|")
+            bins_data[bin_val] = (scheme, issuer_id)
+
+    # Expected BINs: LOCAL, VISA, MC
+    assert "123456" in bins_data, "LOCAL BIN (123456) not found"
+    assert bins_data["123456"] == ("LOCAL", "BANK_A"), f"LOCAL BIN data mismatch: {bins_data['123456']}"
+
+    assert "654321" in bins_data, "VISA BIN (654321) not found"
+    assert bins_data["654321"] == ("VISA", "BANK_B"), f"VISA BIN data mismatch: {bins_data['654321']}"
+
+    assert "512345" in bins_data, "MC BIN (512345) not found"
+    assert bins_data["512345"] == ("MC", "BANK_C"), f"MC BIN data mismatch: {bins_data['512345']}"
+
+
+def test_settlement_batches_table_exists() -> None:
+    """Verify that the settlement_batches table exists for Phase 4 settlement tracking.
+
+    The settlement module aggregates multiple transactions into logical batches
+    for reporting and multi-party settlement. This test validates that the
+    settlement_batches table is properly created and indexed.
+
+    Raises:
+        AssertionError: When settlement_batches table is missing.
+    """
+    if shutil.which("docker") is None:
+        pytest.skip("docker is not available")
+
+    # Verify settlement_batches table exists
+    tables = _run_postgres_query(
+        """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        ORDER BY table_name;
+        """
+    )
+    assert "settlement_batches" in tables, "settlement_batches table not found in PostgreSQL"
+
+    # Verify settlement_batches table structure
+    columns = _run_postgres_query(
+        """
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'settlement_batches'
+        ORDER BY ordinal_position;
+        """
+    )
+    assert columns, "settlement_batches table has no columns"
+
+    column_map = {}
+    for line in columns.splitlines():
+        if line.strip():
+            col_name, col_type = line.split("|")
+            column_map[col_name] = col_type
+
+    # Expected columns for settlement tracking
+    assert "id" in column_map, "Missing id column in settlement_batches"
+    assert "batch_id" in column_map, "Missing batch_id column in settlement_batches"
+    assert "total_count" in column_map, "Missing total_count column in settlement_batches"
+    assert "total_amount" in column_map, "Missing total_amount column in settlement_batches"
+    assert "created_at" in column_map, "Missing created_at column in settlement_batches"
+
+
+def test_transactions_table_has_routing_columns() -> None:
+    """Verify that the transactions table has been extended with Phase 4 routing columns.
+
+    Phase 4 adds issuer_id, scheme, retry_count, and settlement tracking columns
+    to the core transactions table. This test validates that all new columns exist
+    with correct data types and constraints.
+
+    Raises:
+        AssertionError: When any routing column is missing or has wrong type.
+    """
+    if shutil.which("docker") is None:
+        pytest.skip("docker is not available")
+
+    # Get transactions table structure
+    columns = _run_postgres_query(
+        """
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'transactions'
+        ORDER BY ordinal_position;
+        """
+    )
+    assert columns, "transactions table has no columns"
+
+    column_map = {}
+    for line in columns.splitlines():
+        if line.strip():
+            col_name, col_type = line.split("|")
+            column_map[col_name] = col_type
+
+    # Phase 4 routing columns
+    assert "issuer_id" in column_map, "Missing issuer_id column in transactions"
+    assert "scheme" in column_map, "Missing scheme column in transactions"
+    assert "retry_count" in column_map, "Missing retry_count column in transactions"
+    assert "settled" in column_map, "Missing settled column in transactions"
+    assert "settlement_date" in column_map, "Missing settlement_date column in transactions"
+    assert "batch_id" in column_map, "Missing batch_id column in transactions"

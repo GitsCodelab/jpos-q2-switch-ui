@@ -2,7 +2,7 @@
 -- PHASE 4: BIN ROUTING & SETTLEMENT MIGRATION
 -- File: migration-phase4.sql
 -- Target: PostgreSQL
--- Purpose: Add bins and settlement_batches tables for routing engine
+-- Purpose: Add bins and settlement_batches tables + routing columns to transactions table
 -- =========================================================
 
 -- =========================
@@ -37,9 +37,28 @@ CREATE TABLE IF NOT EXISTS settlement_batches (
 CREATE INDEX IF NOT EXISTS idx_settlement_batches_batch_id ON settlement_batches(batch_id);
 
 -- =========================
--- 3. VERIFY MIGRATION
+-- 3. ADD PHASE 4 ROUTING COLUMNS TO TRANSACTIONS TABLE
 -- =========================
--- Run this to confirm all tables exist:
--- SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;
+-- These columns support the BIN routing engine, retry logic, fraud rules, and settlement
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS issuer_id VARCHAR(12);
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS scheme VARCHAR(20);
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS retry_count INT DEFAULT 0;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS settled BOOLEAN DEFAULT FALSE;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS settlement_date DATE;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS batch_id VARCHAR(32);
 
--- Expected tables: bins, settlement_batches, transaction_events, transaction_meta, transactions
+-- =========================
+-- 4. CREATE INDEXES FOR ROUTING COLUMNS
+-- =========================
+CREATE INDEX IF NOT EXISTS idx_transactions_issuer_id ON transactions(issuer_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_scheme ON transactions(scheme);
+CREATE INDEX IF NOT EXISTS idx_transactions_retry_count ON transactions(retry_count);
+CREATE INDEX IF NOT EXISTS idx_transactions_settled ON transactions(settled);
+CREATE INDEX IF NOT EXISTS idx_transactions_batch_id ON transactions(batch_id);
+
+-- =========================
+-- 5. VERIFY MIGRATION
+-- =========================
+-- Run this to confirm all tables and columns exist:
+-- SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;
+-- SELECT column_name FROM information_schema.columns WHERE table_name = 'transactions' ORDER BY ordinal_position;
