@@ -7,3 +7,4 @@ __pycache__/
 lib/
 python_tests/BUSINESS_CASE_RESULTS.txt
 .vscode/settings.json
+package-lock.json
