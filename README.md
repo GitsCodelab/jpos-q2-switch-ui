@@ -195,6 +195,94 @@ docker compose exec -T jpos-postgresql psql -U postgres -d jpos -c "SELECT id,st
 docker compose exec -T jpos-postgresql psql -U postgres -d jpos -c "SELECT id,stan,event_type,left(request_iso,120) AS request_head,left(response_iso,120) AS response_head,created_at FROM transaction_events ORDER BY id DESC LIMIT 10;"
 ```
 
+## Reconciliation Service
+
+The project includes a reconciliation module that reads persisted data and reports operational gaps.
+
+Location:
+
+- `src/main/java/com/switch/recon/ReconciliationService.java`
+- `src/main/java/com/switch/recon/ReconciliationIssue.java`
+- `src/main/java/com/switch/recon/ReconciliationRunner.java`
+- `src/main/java/com/switch/recon/AutoReversalService.java`
+- `src/main/java/com/switch/recon/AutoReversalRunner.java`
+
+What it detects:
+
+- Missing responses: request rows that remain in `REQUEST_RECEIVED` beyond threshold.
+- Reversal candidates: approved/authorized rows that exceeded reversal window and are not marked reversal.
+- Lifecycle mismatches: invalid status/RC/final-status combinations.
+- Event inconsistencies: missing `REQUEST` event or missing terminal event for completed lifecycles.
+
+Runner:
+
+- Main class: `com.qswitch.recon.ReconciliationRunner`
+- The runner uses existing pooled DB connectivity and prints either:
+	- `No reconciliation issues found`
+	- or a list of `Issue{stan='...', rrn='...', type='...', description='...'}` lines.
+
+Unit test coverage:
+
+- `src/test/java/com/qswitch/recon/ReconciliationServiceTest.java`
+- Covers each detector plus full aggregation and SQL parameter binding.
+
+Run reconciliation tests only:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+mvn -q -Dtest=ReconciliationServiceTest test
+```
+
+### Auto-Reversal & Recovery Engine
+
+Scope:
+
+- Detect reversal candidates from reconciliation (`findReversalCandidates`).
+- Build and send ISO `0400` reversal messages over MUX.
+- Persist reversal outcome back to `transactions` and `transaction_events`.
+- Prevent duplicate reversals with both DB-state checks and in-run deduping.
+
+Safety controls implemented:
+
+- Idempotency: skip when transaction is already `REVERSED` or `is_reversal=true`.
+- Timeout handling: no MUX response maps to `RC=91` and `status=REVERSAL_FAILED`.
+- Logging: start/skip/retry/failure paths are logged to stdout/stderr.
+- Retry with bounded exponential backoff:
+	- default retries: `3`
+	- default backoff: `250ms`, then doubled per retry.
+
+Persistence behavior:
+
+- Success (`RC=00`):
+	- `transactions.status=REVERSED`
+	- `transactions.final_status=AUTO_REVERSAL`
+	- `transactions.is_reversal=true`
+- Failure/timeout:
+	- `transactions.status=REVERSAL_FAILED`
+	- `transactions.final_status=AUTO_REVERSAL_FAILED`
+	- `transactions.is_reversal=false`
+- Event audit:
+	- inserts a `REVERSAL` row in `transaction_events` with `request_iso`, `response_iso`, and `rc`
+	- uses `ON CONFLICT (stan, rrn, event_type) DO NOTHING` for duplicate protection.
+
+Run auto-reversal manually:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+docker compose up -d
+mvn -q -DskipTests org.codehaus.mojo:exec-maven-plugin:3.5.0:java \
+  -Dexec.mainClass=com.qswitch.recon.AutoReversalRunner \
+  -Drecon.mux.name=mux.acquirer-mux \
+  -Drecon.reversal.threshold.seconds=60
+```
+
+Run auto-reversal tests only:
+
+```bash
+cd /home/samehabib/jpos-q2-switch
+mvn -q -Dtest=ReconciliationServiceTest,AutoReversalServiceTest test
+```
+
 To disable HEX logging, edit `docker-compose.yml` and clear the `JAVA_OPTS` value:
 
 ```yaml
