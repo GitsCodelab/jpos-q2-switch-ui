@@ -136,7 +136,7 @@ h1, h2, h3, h4, h5, h6 {
 .p-16 { padding: 16px; }
 
 /* Cards/Sections */
-.card {
+.card  {
   background: #ffffff;
   padding: 16px;
   border-radius: 4px;

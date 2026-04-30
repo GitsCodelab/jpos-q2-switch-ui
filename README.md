@@ -66,11 +66,11 @@ cd /home/samehabib/jpos-q2-switch
 docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f pg/migration-phase4.sql
 ```
 
-3.1 Apply Fraud V2 migration (rules, alerts, blacklist, cases):
+3.1 Apply Fraud Phase 2 migration (severity/action/priority, timeline, audit, blacklist metadata):
 
 ```bash
 cd /home/samehabib/jpos-q2-switch-ui
-docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f pg/migration-fraud-v2.sql
+docker compose exec -T jpos-postgresql psql -U postgres -d jpos -f pg/migration-fraud-phase2.sql
 ```
 
 4. Seed settlement/routing sample data (recommended for tests):
@@ -191,6 +191,36 @@ SQL seed scripts are still available for static dataset preparation, but they do
 Note:
 
 - In environments where file appender markers are not emitted, one integration assertion in `python_tests/test_full_setup_python.py` is skipped instead of failing.
+
+## Fraud Phase 2 Highlights
+
+Phase 2 extends fraud controls to an operator-grade workflow:
+
+- Rules engine now supports severity, action, and priority ordering.
+- Blacklist supports expiry date and created-by attribution.
+- Case management supports notes plus full timeline history.
+- Alert actions now include BLOCK_CARD, BLOCK_TERMINAL, APPROVE, ESCALATE.
+- Fraud check now returns score breakdown per triggered rule.
+- Analytics includes trend-over-time and breakdown by rule and terminal.
+- Full audit log endpoint records actor and action context.
+
+## Validation Commands
+
+Run all backend tests (including Phase 2 hard suite):
+
+```bash
+cd /home/samehabib/jpos-q2-switch-ui
+source .venv/bin/activate
+python -m pytest backend/tests/ -q
+```
+
+Run only Phase 2 hard suite:
+
+```bash
+cd /home/samehabib/jpos-q2-switch-ui
+source .venv/bin/activate
+python -m pytest backend/tests/test_fraud_phase2.py -q
+```
 
 ## Commands
 
@@ -429,15 +459,30 @@ Backend API module:
 - `POST /fraud/blacklist`
 - `GET /fraud/cases`
 - `POST /fraud/cases`
+- `PATCH /fraud/cases/{id}` *(new)*
+- `PATCH /fraud/cases/{id}/status` *(new)* - `ACTIVE` / `DEACTIVATED`
+- `DELETE /fraud/cases/{id}` *(new)*
 - `GET /fraud/flagged-transactions` *(new)* - List flagged/declined transactions with risk scores
 - `POST /fraud/check`
+
+Fraud governance logic:
+
+- Rules are immutable after creation (no edit/delete/status mutation).
+- Blacklist entries are immutable after creation (no edit/delete/status mutation).
+- Case queue supports modify, delete, and status transitions (`ACTIVE` / `DEACTIVATED`).
 
 Frontend module:
 
 - New Fraud page with tabs for Dashboard, Alerts, Rules, Blacklist, Check, Cases, and **Transactions** *(new)*
 - Transactions tab displays flagged/declined transactions with risk scores and rules triggered
 - Alert actions: `ACK`, `ESCALATE`, `CLOSE`
+- Case queue actions: edit, delete, activate, deactivate
 - Manual fraud check tool for PAN/terminal/amount simulation
+
+Testing policy update:
+
+- Use Python-based testing workflows (`pytest` and Python simulators) for test execution and data setup.
+- Avoid manual/direct SQL insertion as a test execution method.
 
 ## Reconciliation Service
 

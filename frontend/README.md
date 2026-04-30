@@ -10,7 +10,7 @@ React + Ant Design frontend for the jPOS Core Banking Dashboard with SAP UI5 (Fi
 - **Settlement**: Manage settlement batches and settlement operations
 - **Net Settlement**: View net positions and batch summaries
 - **Routing**: Inspect BIN/terminal routing and PAN route decisions
-- **Fraud**: Dashboard, Alerts, Rules, Blacklist, Cases, Transactions, and live Fraud Check
+- **Fraud Phase 2**: Dashboard KPIs, Trends, Rule/Terminal breakdowns, rich Alerts actions, Rules with severity/action/priority, Blacklist with expiry metadata, Case timeline, Audit log, and live Fraud Check with score breakdown
 - **JWT Authentication**: Secure login with JWT tokens from backend API
 - **Responsive Design**: Mobile-friendly layout with Ant Design components
 - **Compact UI**: Optimized for banking/fintech dashboards
@@ -143,16 +143,28 @@ The frontend integrates with the FastAPI backend on `http://localhost:8000`:
 
 ### Fraud Endpoints
 - `GET /fraud/dashboard` - Fraud KPIs
+- `GET /fraud/dashboard/trends` - Daily trends for analytics tab
+- `GET /fraud/dashboard/breakdown` - Breakdown by rule and by terminal
 - `GET /fraud/alerts` - Alerts queue
-- `POST /fraud/alerts/{id}/action` - ACK/CLOSE/ESCALATE alert
-- `GET /fraud/rules` - Fraud rules list
-- `POST /fraud/rules` - Create fraud rule
-- `GET /fraud/blacklist` - Blacklist list
-- `POST /fraud/blacklist` - Add blacklist entry
+- `POST /fraud/alerts/{id}/action` - `ACK`, `CLOSE`, `ESCALATE`, `BLOCK_CARD`, `BLOCK_TERMINAL`, `APPROVE`
+- `GET /fraud/rules` - Fraud rules list (priority-sorted)
+- `POST /fraud/rules` - Create fraud rule with `severity`, `action`, `priority`
+- `GET /fraud/blacklist` - Blacklist list (PAN values masked)
+- `POST /fraud/blacklist` - Add blacklist entry with optional `expiry_date`
 - `GET /fraud/cases` - Fraud cases list
-- `POST /fraud/cases` - Create fraud case
+- `POST /fraud/cases` - Create fraud case with notes
+- `PATCH /fraud/cases/{id}` - Update case summary/assignee/notes
+- `PATCH /fraud/cases/{id}/status` - Set case status (`OPEN` / `INVESTIGATING` / `CLOSED` plus legacy statuses)
+- `GET /fraud/cases/{id}/timeline` - Fetch case action history
+- `DELETE /fraud/cases/{id}` - Delete case
+- `GET /fraud/audit-log` - Fetch fraud audit trail
 - `GET /fraud/flagged-transactions` - List flagged/declined transactions with risk scores
-- `POST /fraud/check` - Run rule check on a transaction payload
+- `POST /fraud/check` - Run rule check and return score breakdown
+
+Fraud UI governance logic:
+- Rules tab: create + list only (no edit/delete/status mutation).
+- Blacklist tab: create + list only (no edit/delete/status mutation).
+- Cases tab: supports edit, delete, status transitions, and timeline review.
 
 ## 🔧 Development
 

@@ -157,6 +157,9 @@ class FraudRuleOut(_ORM):
     threshold: int
     window_seconds: Optional[int] = None
     weight: int
+    severity: str = "MEDIUM"
+    action: str = "FLAG"
+    priority: int = 100
     is_active: bool
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -168,6 +171,9 @@ class FraudRuleCreate(BaseModel):
     threshold: int
     window_seconds: Optional[int] = None
     weight: int = 0
+    severity: str = "MEDIUM"
+    action: str = "FLAG"
+    priority: int = 100
     is_active: bool = True
 
 
@@ -177,6 +183,8 @@ class BlacklistEntryOut(_ORM):
     value: str
     reason: Optional[str] = None
     is_active: bool
+    expiry_date: Optional[date] = None
+    created_by: Optional[str] = None
     created_at: Optional[datetime] = None
 
 
@@ -185,6 +193,7 @@ class BlacklistEntryCreate(BaseModel):
     value: str
     reason: Optional[str] = None
     is_active: bool = True
+    expiry_date: Optional[date] = None
 
 
 class FraudAlertOut(_ORM):
@@ -214,6 +223,7 @@ class FraudCaseOut(_ORM):
     status: str
     assigned_to: Optional[str] = None
     summary: str
+    notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -223,6 +233,27 @@ class FraudCaseCreate(BaseModel):
     status: str = "OPEN"
     assigned_to: Optional[str] = None
     summary: str
+    notes: Optional[str] = None
+
+
+class FraudCaseUpdate(BaseModel):
+    alert_id: Optional[int] = None
+    assigned_to: Optional[str] = None
+    summary: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class FraudCaseStatusUpdate(BaseModel):
+    status: str
+
+
+class FraudCaseTimelineOut(_ORM):
+    id: int
+    case_id: int
+    action: str
+    performed_by: Optional[str] = None
+    detail: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 
 class FraudCheckIn(BaseModel):
@@ -233,11 +264,17 @@ class FraudCheckIn(BaseModel):
     rrn: Optional[str] = None
 
 
+class ScoreBreakdown(BaseModel):
+    rule: str
+    contribution: int
+
+
 class FraudCheckOut(BaseModel):
     decision: str
     risk_score: int
     severity: str
     triggers: list[str]
+    score_breakdown: list[ScoreBreakdown] = []
 
 
 class FraudDashboardOut(BaseModel):
@@ -246,6 +283,33 @@ class FraudDashboardOut(BaseModel):
     flagged_count: int
     declined_count: int
     fraud_rate: float
+
+
+class FraudDashboardTrendOut(BaseModel):
+    date: str
+    flagged: int
+    declined: int
+    total: int
+
+
+class FraudDashboardBreakdownItem(BaseModel):
+    label: str
+    count: int
+
+
+class FraudDashboardBreakdownOut(BaseModel):
+    by_rule: list[FraudDashboardBreakdownItem]
+    by_terminal: list[FraudDashboardBreakdownItem]
+
+
+class FraudAuditLogOut(_ORM):
+    id: int
+    entity_type: str
+    entity_id: Optional[int] = None
+    action: str
+    performed_by: Optional[str] = None
+    detail: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 
 class FlaggedTransactionOut(BaseModel):

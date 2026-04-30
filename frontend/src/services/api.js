@@ -87,7 +87,14 @@ export const fraudAPI = {
   runCheck: (data) => api.post('/fraud/check', data),
   getCases: () => api.get('/fraud/cases'),
   createCase: (data) => api.post('/fraud/cases', data),
+  updateCase: (id, data) => api.patch(`/fraud/cases/${id}`, data),
+  updateCaseStatus: (id, status) => api.patch(`/fraud/cases/${id}/status`, { status }),
+  deleteCase: (id) => api.delete(`/fraud/cases/${id}`),
   getFlaggedTransactions: (params) => api.get('/fraud/flagged-transactions', { params }),
+  getDashboardTrends: (params) => api.get('/fraud/dashboard/trends', { params }),
+  getDashboardBreakdown: () => api.get('/fraud/dashboard/breakdown'),
+  getCaseTimeline: (id) => api.get(`/fraud/cases/${id}/timeline`),
+  getAuditLog: (params) => api.get('/fraud/audit-log', { params }),
 }
 
 export default api

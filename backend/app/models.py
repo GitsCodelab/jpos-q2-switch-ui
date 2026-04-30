@@ -107,6 +107,9 @@ class FraudRule(Base):
     threshold = Column(Integer, nullable=False)
     window_seconds = Column(Integer)
     weight = Column(Integer, nullable=False, default=0)
+    severity = Column(String(16), nullable=False, default="MEDIUM")
+    action = Column(String(16), nullable=False, default="FLAG")
+    priority = Column(Integer, nullable=False, default=100)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
@@ -120,6 +123,8 @@ class BlacklistEntry(Base):
     value = Column(String(64), nullable=False, unique=True)
     reason = Column(String(255))
     is_active = Column(Boolean, nullable=False, default=True)
+    expiry_date = Column(Date, nullable=True)
+    created_by = Column(String(64), nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
 
 
@@ -145,8 +150,32 @@ class FraudCase(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     alert_id = Column(Integer)
-    status = Column(String(16), nullable=False, default="OPEN")
+    status = Column(String(20), nullable=False, default="OPEN")
     assigned_to = Column(String(64))
     summary = Column(String(255), nullable=False)
+    notes = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+
+class FraudCaseTimeline(Base):
+    __tablename__ = "fraud_case_timeline"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    case_id = Column(Integer, nullable=False)
+    action = Column(String(64), nullable=False)
+    performed_by = Column(String(64), nullable=True)
+    detail = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+
+class FraudAuditLog(Base):
+    __tablename__ = "fraud_audit_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    entity_type = Column(String(32), nullable=False)
+    entity_id = Column(Integer, nullable=True)
+    action = Column(String(64), nullable=False)
+    performed_by = Column(String(64), nullable=True)
+    detail = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())

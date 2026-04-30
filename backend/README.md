@@ -193,6 +193,38 @@ Each issue record includes an `issue_type` field:
 
 ---
 
+### Phase 7 — Fraud (Phase 2)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/fraud/dashboard` | Fraud KPIs derived from `transaction_events` (`FRAUD_FLAG`, `FRAUD_DECLINE`) |
+| GET | `/fraud/dashboard/trends` | Daily fraud trend series (`date`, `flagged`, `declined`, `total`) |
+| GET | `/fraud/dashboard/breakdown` | Fraud breakdown by rule and by terminal |
+| GET | `/fraud/alerts` | List fraud alerts mapped from switch-persisted fraud events |
+| POST | `/fraud/alerts/{alert_id}/action` | Alert action: `ACK`, `CLOSE`, `ESCALATE`, `BLOCK_CARD`, `BLOCK_TERMINAL`, `APPROVE` |
+| GET | `/fraud/rules` | List fraud rules ordered by priority ASC |
+| POST | `/fraud/rules` | Create fraud rule (`severity`, `action`, `priority`) |
+| PUT/PATCH/DELETE | `/fraud/rules/{id}` | Immutable guard: always returns 405 |
+| GET | `/fraud/blacklist` | List blacklist entries (PAN values masked) |
+| POST | `/fraud/blacklist` | Create blacklist entry (`TERMINAL`, `BIN`, `PAN`) with optional `expiry_date` |
+| PUT/PATCH/DELETE | `/fraud/blacklist/{id}` | Immutable guard: always returns 405 |
+| GET | `/fraud/cases` | List case queue |
+| POST | `/fraud/cases` | Create case with optional notes |
+| PATCH | `/fraud/cases/{case_id}` | Update case summary/assignee/notes |
+| PATCH | `/fraud/cases/{case_id}/status` | Update status (`OPEN`, `INVESTIGATING`, `CLOSED`, `ACTIVE`, `DEACTIVATED`) |
+| DELETE | `/fraud/cases/{case_id}` | Delete case |
+| GET | `/fraud/cases/{case_id}/timeline` | Ordered case timeline entries |
+| POST | `/fraud/check` | Runtime fraud evaluation with `score_breakdown` |
+| GET | `/fraud/flagged-transactions` | List flagged/declined transactions with enrichment |
+| GET | `/fraud/audit-log` | Fraud audit trail, filterable by `entity_type` and `action` |
+
+Fraud governance rules:
+- `rules` are immutable after creation: update/delete/status mutation is blocked.
+- `blacklist` entries are immutable after creation: update/delete/status mutation is blocked.
+- cases support update/delete/status plus timeline and audit tracking.
+
+---
+
 ## Database Schema
 
 The API reads from the `jpos` PostgreSQL database. Key tables:
@@ -206,8 +238,11 @@ The API reads from the `jpos` PostgreSQL database. Key tables:
 | `terminals` | Terminal-to-acquirer mapping |
 | `settlement_batches` | Settlement run records |
 | `net_settlement` | Net position per party per batch |
+| `fraud_rules` | Fraud rule catalog |
+| `blacklist` | Fraud blacklist entries |
+| `fraud_cases` | Fraud investigation queue |
 
-Schema DDL: see `pg/db.sql` and `pg/migration-phase4.sql`.
+Schema DDL: see `pg/db.sql`, `pg/migration-phase4.sql`, and `pg/migration-fraud-phase2.sql`.
 
 ---
 
@@ -231,7 +266,8 @@ backend/
 │       ├── settlement.py       # Phase 3
 │       ├── net.py              # Phase 4
 │       ├── config.py           # Phase 5 (bins, terminals, routing)
-│       └── dashboard.py        # Phase 6
+│       ├── dashboard.py        # Phase 6
+│       └── fraud.py            # Phase 7
 └── tests/
     ├── conftest.py             # SQLite fixtures, seeded test data
     ├── TEST-REPORT.md          # Full test results report
@@ -241,7 +277,9 @@ backend/
     ├── test_settlement.py
     ├── test_net_settlement.py
     ├── test_config.py
-    └── test_dashboard.py
+        ├── test_dashboard.py
+        ├── test_fraud.py
+        └── test_fraud_tabs_hard.py
 ```
 
 ---
@@ -249,6 +287,11 @@ backend/
 ## Testing
 
 Tests use SQLite in-memory — no Docker required.
+
+Testing policy:
+- Use Python test tooling (`pytest`) for API validation.
+- Avoid manual/direct SQL data insertion as a testing method.
+- Use Python fixtures/factories to seed test data.
 
 ```bash
 # From repo root

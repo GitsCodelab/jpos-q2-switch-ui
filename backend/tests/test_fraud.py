@@ -192,6 +192,21 @@ class TestFraudRules:
         assert response.json()["rule_type"] == "VELOCITY"
         assert response.json()["window_seconds"] == 30
 
+    def test_rule_update_not_allowed(self, client):
+        response = client.patch(
+            "/fraud/rules/1",
+            json={"threshold": 99999},
+            headers=auth_headers(client),
+        )
+        assert response.status_code == 405
+
+    def test_rule_delete_not_allowed(self, client):
+        response = client.delete(
+            "/fraud/rules/1",
+            headers=auth_headers(client),
+        )
+        assert response.status_code == 405
+
 
 # ── Blacklist ──────────────────────────────────────────────────────────────────
 
@@ -245,6 +260,21 @@ class TestFraudBlacklist:
         assert response.status_code == 200
         assert response.json()["entry_type"] == "BIN"
         assert response.json()["value"] == "411111"
+
+    def test_blacklist_update_not_allowed(self, client):
+        response = client.patch(
+            "/fraud/blacklist/1",
+            json={"reason": "modified"},
+            headers=auth_headers(client),
+        )
+        assert response.status_code == 405
+
+    def test_blacklist_delete_not_allowed(self, client):
+        response = client.delete(
+            "/fraud/blacklist/1",
+            headers=auth_headers(client),
+        )
+        assert response.status_code == 405
 
 
 # ── Fraud Check ────────────────────────────────────────────────────────────────
@@ -380,6 +410,98 @@ class TestFraudCases:
         )
         assert response.status_code == 200
         assert response.json()["status"] == "OPEN"
+
+    def test_update_case(self, client):
+        created = client.post(
+            "/fraud/cases",
+            json={"alert_id": 1, "summary": "Will update", "assigned_to": "analyst-c"},
+            headers=auth_headers(client),
+        )
+        assert created.status_code == 200
+        case_id = created.json()["id"]
+
+        updated = client.patch(
+            f"/fraud/cases/{case_id}",
+            json={"summary": "Updated summary", "assigned_to": "analyst-z"},
+            headers=auth_headers(client),
+        )
+        assert updated.status_code == 200
+        assert updated.json()["summary"] == "Updated summary"
+        assert updated.json()["assigned_to"] == "analyst-z"
+
+    def test_case_update_requires_auth(self, client):
+        created = client.post(
+            "/fraud/cases",
+            json={"alert_id": 1, "summary": "Auth update check"},
+            headers=auth_headers(client),
+        )
+        case_id = created.json()["id"]
+        response = client.patch(f"/fraud/cases/{case_id}", json={"summary": "x"})
+        assert response.status_code == 401
+
+    def test_case_status_active_deactivated(self, client):
+        created = client.post(
+            "/fraud/cases",
+            json={"alert_id": 1, "summary": "Status check"},
+            headers=auth_headers(client),
+        )
+        case_id = created.json()["id"]
+
+        active = client.patch(
+            f"/fraud/cases/{case_id}/status",
+            json={"status": "ACTIVE"},
+            headers=auth_headers(client),
+        )
+        assert active.status_code == 200
+        assert active.json()["status"] == "ACTIVE"
+
+        deactivated = client.patch(
+            f"/fraud/cases/{case_id}/status",
+            json={"status": "DEACTIVATED"},
+            headers=auth_headers(client),
+        )
+        assert deactivated.status_code == 200
+        assert deactivated.json()["status"] == "DEACTIVATED"
+
+    def test_case_status_invalid_value(self, client):
+        created = client.post(
+            "/fraud/cases",
+            json={"alert_id": 1, "summary": "Invalid status check"},
+            headers=auth_headers(client),
+        )
+        case_id = created.json()["id"]
+
+        response = client.patch(
+            f"/fraud/cases/{case_id}/status",
+            json={"status": "ZOMBIE"},
+            headers=auth_headers(client),
+        )
+        assert response.status_code == 400
+
+    def test_delete_case(self, client):
+        created = client.post(
+            "/fraud/cases",
+            json={"alert_id": 1, "summary": "Delete me"},
+            headers=auth_headers(client),
+        )
+        case_id = created.json()["id"]
+
+        deleted = client.delete(f"/fraud/cases/{case_id}", headers=auth_headers(client))
+        assert deleted.status_code == 200
+        assert deleted.json()["deleted"] is True
+
+        not_found = client.delete(f"/fraud/cases/{case_id}", headers=auth_headers(client))
+        assert not_found.status_code == 404
+
+    def test_delete_case_requires_auth(self, client):
+        created = client.post(
+            "/fraud/cases",
+            json={"alert_id": 1, "summary": "Delete auth check"},
+            headers=auth_headers(client),
+        )
+        case_id = created.json()["id"]
+        response = client.delete(f"/fraud/cases/{case_id}")
+        assert response.status_code == 401
 
 
 # ── Flagged Transactions ───────────────────────────────────────────────────────

@@ -143,6 +143,14 @@ class TestFraudDataPipeline:
 
     def test_fraud_check_endpoint_blacklisted_terminal_declines(self, client):
         """Blacklisted terminal should trigger DECLINE decision"""
+        # Ensure terminal is blacklisted in this test context.
+        create = client.post(
+            "/fraud/blacklist",
+            json={"entry_type": "TERMINAL", "value": "TERM9999", "reason": "pipeline test", "is_active": True},
+            headers=auth_headers(client),
+        )
+        assert create.status_code in (200, 201, 409)
+
         response = client.post(
             "/fraud/check",
             json={"amount": 100, "terminal_id": "TERM9999", "pan": "5000001234567890"},
