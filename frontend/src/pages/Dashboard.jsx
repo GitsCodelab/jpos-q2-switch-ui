@@ -160,7 +160,8 @@ export default function Dashboard() {
             <Card className="card" style={{ textAlign: 'center' }}>
               <Statistic
                 title="Total Amount"
-                value={`$${parseFloat(metrics?.total_amount || 0).toFixed(2)}`}
+                // value={`$${parseFloat(metrics?.total_amount  || 0).toFixed(2)}`}
+                value={`$${parseFloat(metrics?.total_amount /1000 || 0).toFixed(0)}K`}
                 valueStyle={{ fontSize: '16px' }}
               />
             </Card>
