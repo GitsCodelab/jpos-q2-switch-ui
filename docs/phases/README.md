@@ -43,6 +43,20 @@ Full real-time fraud detection with scoring engine. Phase 1: velocity rules, hig
 
 ### Phase 06 — Analytics
 Dashboard and reporting layer. KPI cards (transaction counts, fraud rates, settlement totals), fraud trend charts (daily/weekly), fraud breakdown by rule and terminal, and audit log viewer.
+### Phase 07 switch test 
+create test page for hit switch for tesitn \
+
+### Phase 08 enhecenement 
+do some enhencement for ui and switch 
+
+### phase 09 Scheme-Level ISO Validation & Authorization Rules
+building:
+
+ISO8583 validation engine
+authorization rules
+scheme-style message validation
+transaction integrity controls
+***That is core payment-switch architecture.
 
 ## Technology Stack
 

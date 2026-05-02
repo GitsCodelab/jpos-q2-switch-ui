@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { Layout, Menu, Button, Dropdown, Avatar, Space, Spin } from 'antd'
-import { UserOutlined, LogoutOutlined, DashboardOutlined, UnorderedListOutlined, ReconciliationOutlined, DollarOutlined, ApartmentOutlined, DeploymentUnitOutlined, AlertOutlined, ExperimentOutlined } from '@ant-design/icons'
+import { UserOutlined, LogoutOutlined, DashboardOutlined, UnorderedListOutlined, ReconciliationOutlined, DollarOutlined, ApartmentOutlined, DeploymentUnitOutlined, AlertOutlined, ExperimentOutlined, SafetyCertificateOutlined } from '@ant-design/icons'
 
 const Transactions = lazy(() => import('./pages/Transactions'))
 const Reconciliation = lazy(() => import('./pages/Reconciliation'))
@@ -10,6 +10,7 @@ const NetSettlement = lazy(() => import('./pages/NetSettlement'))
 const Routing = lazy(() => import('./pages/Routing'))
 const Fraud = lazy(() => import('./pages/Fraud'))
 const SwitchTesting = lazy(() => import('./pages/SwitchTesting'))
+const Validation = lazy(() => import('./pages/Validation'))
 const Login = lazy(() => import('./pages/Login'))
 
 const { Header, Sider, Content } = Layout
@@ -103,6 +104,11 @@ export default function App() {
       icon: <ExperimentOutlined />,
       label: 'Switch Testing',
     },
+    {
+      key: 'validation',
+      icon: <SafetyCertificateOutlined />,
+      label: 'Validation',
+    },
   ]
 
   const renderPage = () => {
@@ -123,6 +129,8 @@ export default function App() {
         return <Fraud />
       case 'switch-testing':
         return <SwitchTesting onNavigate={(page) => setCurrentPage(page)} />
+      case 'validation':
+        return <Validation />
       default:
         return <Dashboard />
     }

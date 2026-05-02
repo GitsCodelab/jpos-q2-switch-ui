@@ -2,6 +2,7 @@ package com.qswitch.listener;
 
 import com.qswitch.dao.EventDAO;
 import com.qswitch.dao.TransactionDAO;
+import com.qswitch.dao.ValidationEventDAO;
 import com.qswitch.fraud.FraudDecision;
 import com.qswitch.fraud.FraudEngine;
 import com.qswitch.model.Transaction;
@@ -10,6 +11,8 @@ import com.qswitch.routing.BinDAO;
 import com.qswitch.routing.RoutingEngine;
 import com.qswitch.service.SecurityService;
 import com.qswitch.service.TransactionService;
+import com.qswitch.validation.AuthorizationRulesEngine;
+import com.qswitch.validation.IsoValidationEngine;
 import org.jpos.iso.ISOException;
 import org.jpos.iso.ISOMsg;
 import org.jpos.iso.ISORequestListener;
@@ -30,6 +33,9 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
     private final SecurityService securityService;
     private final FraudEngine fraudEngine;
     private final BinDAO binDAO;
+    private final IsoValidationEngine isoValidationEngine;
+    private final AuthorizationRulesEngine authRulesEngine;
+    private final ValidationEventDAO validationEventDAO;
     private boolean debugEnabled;
 
     public SwitchListener() {
@@ -37,7 +43,10 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
             new TransactionService(new TransactionDAO(), new EventDAO()),
             new SecurityService(),
             new FraudEngine(),
-            new BinDAO(DBConnectionManager.getDataSource())
+            new BinDAO(DBConnectionManager.getDataSource()),
+            new IsoValidationEngine(),
+            new AuthorizationRulesEngine(),
+            new ValidationEventDAO()
         );
     }
 
@@ -61,10 +70,26 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
     }
 
     public SwitchListener(TransactionService transactionService, SecurityService securityService, FraudEngine fraudEngine, BinDAO binDAO) {
+        this(transactionService, securityService, fraudEngine, binDAO, new IsoValidationEngine(), new AuthorizationRulesEngine(), new ValidationEventDAO());
+    }
+
+    public SwitchListener(TransactionService transactionService, SecurityService securityService,
+                          FraudEngine fraudEngine, BinDAO binDAO,
+                          IsoValidationEngine isoValidationEngine, AuthorizationRulesEngine authRulesEngine) {
+        this(transactionService, securityService, fraudEngine, binDAO, isoValidationEngine, authRulesEngine, new ValidationEventDAO());
+    }
+
+    public SwitchListener(TransactionService transactionService, SecurityService securityService,
+                          FraudEngine fraudEngine, BinDAO binDAO,
+                          IsoValidationEngine isoValidationEngine, AuthorizationRulesEngine authRulesEngine,
+                          ValidationEventDAO validationEventDAO) {
         this.transactionService = transactionService;
         this.securityService = securityService;
         this.fraudEngine = fraudEngine;
         this.binDAO = binDAO;
+        this.isoValidationEngine = isoValidationEngine;
+        this.authRulesEngine = authRulesEngine;
+        this.validationEventDAO = validationEventDAO;
     }
 
     @Override
@@ -109,6 +134,39 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
                     return true;
                 }
             }
+
+            // ---------------- PHASE 09: ISO FIELD VALIDATION ----------------
+            // Resolve scheme early for validation (may be null before routing, default LOCAL)
+            String preRoutingScheme = resolveSchemeForValidation(request);
+            IsoValidationEngine.ValidationResult isoValidation = isoValidationEngine.validate(request, preRoutingScheme);
+            if (!isoValidation.isValid()) {
+                getLog().warn("ISO VALIDATION REJECT STAN=" + stan
+                    + " scheme=" + preRoutingScheme
+                    + " errors=" + isoValidation.getErrors());
+                validationEventDAO.logFail(stan, rrn, mti, preRoutingScheme, "ISO_VALIDATION",
+                    isoValidation.getErrors(), isoValidation.getRejectCode());
+                ISOMsg resp = buildBaseResponse(request, stan, rrn);
+                resp.set(39, isoValidation.getRejectCode());
+                safeSend(source, request, resp, "ISO VALIDATION REJECT", "VALIDATION_REJECT");
+                return true;
+            }
+            validationEventDAO.logPass(stan, rrn, mti, preRoutingScheme, "ISO_VALIDATION");
+
+            // ---------------- PHASE 09: AUTHORIZATION RULES ----------------
+            AuthorizationRulesEngine.AuthDecision authDecision =
+                authRulesEngine.evaluate(request, preRoutingScheme, amount);
+            if (!authDecision.isApproved()) {
+                getLog().warn("AUTH RULE REJECT STAN=" + stan
+                    + " reason=" + authDecision.getReason());
+                java.util.List<String> authErrors = java.util.Collections.singletonList(authDecision.getReason());
+                validationEventDAO.logFail(stan, rrn, mti, preRoutingScheme, "AUTH_RULES",
+                    authErrors, authDecision.getRejectCode());
+                ISOMsg resp = buildBaseResponse(request, stan, rrn);
+                resp.set(39, authDecision.getRejectCode());
+                safeSend(source, request, resp, "AUTH RULE REJECT", "AUTH_RULE_REJECT");
+                return true;
+            }
+            validationEventDAO.logPass(stan, rrn, mti, preRoutingScheme, "AUTH_RULES");
 
             // ---------------- SECURITY ----------------
             SecurityService.ValidationResult security = securityService.validateRequestSecurity(request);
@@ -316,4 +374,25 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
             throw new ISOException("Invalid field 4 amount", e);
         }
     }
+
+    // ---------------- PHASE 09 HELPERS ----------------
+
+    /**
+     * Quick pre-routing scheme resolution: look up PAN BIN in BinDAO to get the scheme.
+     * Falls back to "LOCAL" if BIN not found or PAN absent.
+     */
+    private String resolveSchemeForValidation(ISOMsg request) {
+        try {
+            String pan = request.hasField(2) ? request.getString(2) : null;
+            if (pan != null && pan.length() >= 6) {
+                String bin = pan.substring(0, 6);
+                com.qswitch.routing.Bin binEntry = binDAO.findByBin(bin);
+                if (binEntry != null && binEntry.getScheme() != null) {
+                    return binEntry.getScheme().toUpperCase(java.util.Locale.ROOT);
+                }
+            }
+        } catch (Exception ignored) {}
+        return "LOCAL";
+    }
 }
+

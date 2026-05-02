@@ -180,3 +180,47 @@ class FraudAuditLog(Base):
     performed_by = Column(String(64), nullable=True)
     detail = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
+
+
+# ─── Phase 09: Validation & Authorization Rules ───────────────────────────────
+
+class ValidationRule(Base):
+    __tablename__ = "validation_rules"
+
+    id         = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
+    scheme     = Column(String(20), nullable=False, default="*")
+    field_id   = Column(Integer, nullable=False)
+    field_name = Column(String(50))
+    mandatory  = Column(Boolean, nullable=False, default=False)
+    min_len    = Column(Integer, nullable=False, default=0)
+    max_len    = Column(Integer, nullable=False, default=999)
+    format     = Column(String(20), nullable=False, default="ANY")
+    enabled    = Column(Boolean, nullable=False, default=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+
+class AuthRule(Base):
+    __tablename__ = "auth_rules"
+
+    id         = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
+    rule_name  = Column(String(100), nullable=False)
+    scheme     = Column(String(20), nullable=False, default="*")
+    rule_type  = Column(String(50), nullable=False)
+    value      = Column(String(200), nullable=False)
+    enabled    = Column(Boolean, nullable=False, default=True)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+
+class ValidationEvent(Base):
+    __tablename__ = "validation_events"
+
+    id              = Column(BigInteger, primary_key=True, autoincrement=True, index=True)
+    stan            = Column(String(12))
+    rrn             = Column(String(12))
+    mti             = Column(String(4))
+    scheme          = Column(String(20))
+    validation_type = Column(String(30), nullable=False)
+    result          = Column(String(10), nullable=False)
+    errors          = Column(Text)
+    reject_code     = Column(String(2))
+    created_at      = Column(TIMESTAMP, server_default=func.now())

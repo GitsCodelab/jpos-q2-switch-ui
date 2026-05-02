@@ -330,3 +330,87 @@ class FlaggedTransactionOut(BaseModel):
     currency: Optional[str] = None
     rc: Optional[str] = None
     scheme: Optional[str] = None
+
+
+# ─── Phase 09: Validation & Authorization Rules ───────────────────────────────
+
+class ValidationRuleOut(_ORM):
+    id: int
+    scheme: str
+    field_id: int
+    field_name: Optional[str] = None
+    mandatory: bool
+    min_len: int
+    max_len: int
+    format: str
+    enabled: bool
+    created_at: Optional[datetime] = None
+
+
+class ValidationRuleCreate(BaseModel):
+    scheme: str = "*"
+    field_id: int
+    field_name: Optional[str] = None
+    mandatory: bool = False
+    min_len: int = 0
+    max_len: int = 999
+    format: str = "ANY"
+    enabled: bool = True
+
+
+class ValidationRuleUpdate(BaseModel):
+    field_name: Optional[str] = None
+    mandatory: Optional[bool] = None
+    min_len: Optional[int] = None
+    max_len: Optional[int] = None
+    format: Optional[str] = None
+    enabled: Optional[bool] = None
+
+
+class AuthRuleOut(_ORM):
+    id: int
+    rule_name: str
+    scheme: str
+    rule_type: str
+    value: str
+    enabled: bool
+    created_at: Optional[datetime] = None
+
+
+class AuthRuleCreate(BaseModel):
+    rule_name: str
+    scheme: str = "*"
+    rule_type: str
+    value: str
+    enabled: bool = True
+
+
+class AuthRuleUpdate(BaseModel):
+    rule_name: Optional[str] = None
+    scheme: Optional[str] = None
+    rule_type: Optional[str] = None
+    value: Optional[str] = None
+    enabled: Optional[bool] = None
+
+
+class ValidationEventOut(_ORM):
+    id: int
+    stan: Optional[str] = None
+    rrn: Optional[str] = None
+    mti: Optional[str] = None
+    scheme: Optional[str] = None
+    validation_type: str
+    result: str
+    errors: Optional[str] = None
+    reject_code: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class ValidationStatsOut(BaseModel):
+    total_events: int
+    pass_count: int
+    fail_count: int
+    pass_rate: float
+    top_reject_codes: list[dict]
+    by_scheme: list[dict]
+    by_validation_type: list[dict]

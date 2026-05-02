@@ -5,7 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.routers import auth, transactions, reconciliation, settlement, net, config, dashboard, fraud, testing
+from app.routers import auth, transactions, reconciliation, settlement, net, config, dashboard, fraud, testing, validation
 from app.schemas import ErrorResponse
 
 UNPROCESSABLE_STATUS = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
@@ -44,6 +44,7 @@ app.include_router(config.router)
 app.include_router(dashboard.router)
 app.include_router(fraud.router)
 app.include_router(testing.router)
+app.include_router(validation.router)
 
 
 def _default_error_code(status_code: int) -> str:

@@ -103,4 +103,17 @@ export const testingAPI = {
   getHistory: (limit = 20) => api.get('/api/v1/testing/history', { params: { limit } }),
 }
 
+export const validationAPI = {
+  getRules:       (params) => api.get('/validation/rules', { params }),
+  createRule:     (data)   => api.post('/validation/rules', data),
+  updateRule:     (id, data) => api.patch(`/validation/rules/${id}`, data),
+  deleteRule:     (id)     => api.delete(`/validation/rules/${id}`),
+  getAuthRules:   (params) => api.get('/validation/auth-rules', { params }),
+  createAuthRule: (data)   => api.post('/validation/auth-rules', data),
+  updateAuthRule: (id, data) => api.patch(`/validation/auth-rules/${id}`, data),
+  deleteAuthRule: (id)     => api.delete(`/validation/auth-rules/${id}`),
+  getEvents:      (params) => api.get('/validation/events', { params }),
+  getStats:       ()       => api.get('/validation/stats'),
+}
+
 export default api
