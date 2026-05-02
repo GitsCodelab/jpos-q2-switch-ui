@@ -22,11 +22,12 @@ export default function Transactions() {
     try {
       const normalizedLimit = Math.min(Math.max(Number(params.limit || 50), 1), 500)
       setPageSize(normalizedLimit)
-      const hasDirectSearch = !!(params.stan || params.rrn)
+      const hasDirectSearch = !!(params.stan || params.rrn || params.pan)
       const response = hasDirectSearch
         ? await transactionAPI.search({
             stan: params.stan || undefined,
             rrn: params.rrn || undefined,
+            pan: params.pan || undefined,
             limit: normalizedLimit,
             offset: 0,
           })
@@ -34,6 +35,7 @@ export default function Transactions() {
             status: params.status || undefined,
             scheme: params.scheme || undefined,
             issuer_id: params.issuer_id || undefined,
+            pan: params.pan || undefined,
             settled: typeof params.settled === 'boolean' ? params.settled : undefined,
             limit: normalizedLimit,
             offset: 0,
@@ -71,6 +73,13 @@ export default function Transactions() {
     }
   }
 
+  const maskPan = (pan) => {
+    const digits = String(pan || '').replace(/\D/g, '')
+    if (!digits) return '-'
+    if (digits.length <= 10) return digits
+    return `${digits.slice(0, 6)}${'*'.repeat(digits.length - 10)}${digits.slice(-4)}`
+  }
+
   const columns = [
     {
       title: 'Transaction ID',
@@ -90,6 +99,13 @@ export default function Transactions() {
       dataIndex: 'rrn',
       key: 'rrn',
       width: 100,
+    },
+    {
+      title: 'PAN',
+      dataIndex: 'pan',
+      key: 'pan',
+      width: 170,
+      render: (text) => maskPan(text),
     },
     {
       title: 'Amount',
@@ -130,6 +146,15 @@ export default function Transactions() {
       width: 80,
     },
     {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (text) => text ? new Date(text).toLocaleString() : '-',
+    },
+    {
       title: 'Actions',
       key: 'actions',
       width: 100,
@@ -155,6 +180,8 @@ export default function Transactions() {
       dataIndex: 'created_at',
       key: 'created_at',
       width: 180,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
       render: (text) => new Date(text).toLocaleString(),
     },
   ]
@@ -170,6 +197,9 @@ export default function Transactions() {
             </Form.Item>
             <Form.Item label="RRN" name="rrn">
               <Input size="small" placeholder="Filter by RRN" />
+            </Form.Item>
+            <Form.Item label="PAN" name="pan">
+              <Input size="small" placeholder="e.g. 555*5555, *5555, 555*" />
             </Form.Item>
             <Form.Item label="Status" name="status">
               <Select
@@ -265,6 +295,9 @@ export default function Transactions() {
                     </div>
                     <div style={{ marginBottom: '12px' }}>
                       <strong>RRN:</strong> {selectedTx.rrn}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>PAN:</strong> {selectedTx.pan || '-'}
                     </div>
                     <div style={{ marginBottom: '12px' }}>
                       <strong>Amount:</strong> ${parseFloat(selectedTx.amount).toFixed(2)}

@@ -17,6 +17,7 @@ CREATE TABLE transactions (
 
     stan VARCHAR(12) NOT NULL,
     rrn VARCHAR(12),
+    pan VARCHAR(19),
     terminal_id VARCHAR(16),
 
     mti VARCHAR(4),
@@ -49,6 +50,7 @@ CREATE TABLE transactions (
 
 CREATE INDEX idx_transactions_stan ON transactions(stan);
 CREATE INDEX idx_transactions_rrn ON transactions(rrn);
+CREATE INDEX idx_transactions_pan ON transactions(pan);
 CREATE INDEX idx_transactions_status ON transactions(status);
 CREATE INDEX idx_transactions_issuer_id ON transactions(issuer_id);
 CREATE INDEX idx_transactions_scheme ON transactions(scheme);

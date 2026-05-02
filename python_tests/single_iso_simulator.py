@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -10,6 +11,8 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SWITCH_HOST = os.getenv("SWITCH_HOST", "switch")
+DEFAULT_SWITCH_PORT = int(os.getenv("SWITCH_PORT", "9000"))
 
 DEFAULT_ISO_MESSAGE = {
     "mti": "0200",
@@ -78,13 +81,15 @@ def _compile_probe(tmp_dir: Path, cp: str) -> None:
         public class PySingleIsoProbe {
             public static void main(String[] args) throws Exception {
                 GenericPackager packager = new GenericPackager("cfg/iso87.xml");
-                ASCIIChannel channel = new ASCIIChannel("127.0.0.1", 9000, packager);
+                String host = args[0];
+                int port = Integer.parseInt(args[1]);
+                ASCIIChannel channel = new ASCIIChannel(host, port, packager);
                 channel.connect();
 
                 ISOMsg m = new ISOMsg();
                 m.setPackager(packager);
-                m.setMTI(args[0]);
-                for (int i = 1; i + 1 < args.length; i += 2) {
+                m.setMTI(args[2]);
+                for (int i = 3; i + 1 < args.length; i += 2) {
                     int field = Integer.parseInt(args[i]);
                     m.set(field, args[i + 1]);
                 }
@@ -118,7 +123,7 @@ def _compile_probe(tmp_dir: Path, cp: str) -> None:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Send a single ISO8583 message to the running jPOS listener at 127.0.0.1:9000",
+        description="Send a single ISO8583 message to the running jPOS listener",
         epilog="Profiles: atm, pos, reversal, fraud (shorthand device presets)",
     )
     parser.add_argument(
@@ -141,6 +146,17 @@ def _parse_args() -> argparse.Namespace:
         action="append",
         default=[],
         help="Override a field as key=value, can be repeated (example: --field 4=000000010000).",
+    )
+    parser.add_argument(
+        "--host",
+        default=DEFAULT_SWITCH_HOST,
+        help="Switch host. Defaults to SWITCH_HOST env var or 'switch'.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_SWITCH_PORT,
+        help="Switch port. Defaults to SWITCH_PORT env var or 9000.",
     )
     return parser.parse_args()
 
@@ -190,6 +206,7 @@ def main() -> int:
     if args.profile:
         print(f"Using profile: {args.profile}")
         print(f"Description: {PROFILES[args.profile].get('description', '')}")
+    print(f"Switch target: {args.host}:{args.port}")
     print("\nSending ISO message:")
     print(json.dumps(message, indent=2))
 
@@ -197,7 +214,7 @@ def main() -> int:
         tmp_dir = Path(tmp)
         _compile_probe(tmp_dir, cp)
 
-        command = ["java", "-cp", f"{cp}:{tmp_dir}", "PySingleIsoProbe", message["mti"]]
+        command = ["java", "-cp", f"{cp}:{tmp_dir}", "PySingleIsoProbe", args.host, str(args.port), message["mti"]]
         for key, value in message.items():
             if key == "mti":
                 continue

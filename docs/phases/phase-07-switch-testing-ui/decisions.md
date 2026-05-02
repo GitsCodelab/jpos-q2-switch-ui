@@ -54,15 +54,31 @@ response = send_transaction(profile=profile, overrides=fields)
 - UI is always consistent with what the service actually sends
 
 ---
+## ADR-04: Persistent ISO test history storage
 
-## ADR-04: In-memory history store
+**Decision:** All test transactions and ISO request/response messages are stored in PostgreSQL.
 
-**Decision:** The last 50 test transactions are stored in a module-level list in `iso_testing_service.py`. No database table.
+**Rationale:**
+- Test history must survive service restarts
+- Operators need historical visibility for troubleshooting
+- Useful for switch debugging and regression analysis
+- Enables future analytics and replay functionality
+
+**Storage scope:**
+The system stores:
+- all iso message fields
+- elapsed time
+- profile name
+- created timestamp
+
+**Future possibilities:**
+- Replay failed transactions
+- Search by STAN/RRN
 
 **Rationale:**
 - Testing UI is for operational QA, not audit — no regulatory requirement to persist test sends
 - A DB table adds migration overhead for a non-critical feature
-- History resets on service restart, which is acceptable for a testing tool
+- store all History in db  
 
 **If persistence is needed later:** move history into the existing `transactions` table with a `test_mode = true` flag.
 
@@ -92,6 +108,11 @@ response = send_transaction(profile=profile, overrides=fields)
 - Prevents sending malformed messages that would cause the switch to crash or log confusing errors
 - Pydantic schema enforces this at the boundary before the service is called
 
+
+
+
+**Validation:***
+- test full cycle from ui -> backend -> switch -> db
 ---
 
 ## UI Responsibilities (boundaries)

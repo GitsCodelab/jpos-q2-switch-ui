@@ -92,6 +92,15 @@ export default function Reconciliation() {
       dataIndex: 'rrn',
       key: 'rrn',
     },
+    {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (v) => v ? new Date(v).toLocaleString() : '—',
+    },
   ]
 
   const missingColumns = [
@@ -113,6 +122,15 @@ export default function Reconciliation() {
       dataIndex: 'issue_type',
       key: 'issue_type',
       width: 100,
+    },
+    {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (v) => v ? new Date(v).toLocaleString() : '—',
     },
   ]
 
@@ -141,6 +159,15 @@ export default function Reconciliation() {
       dataIndex: 'issue_type',
       key: 'issue_type',
       width: 100,
+    },
+    {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (v) => v ? new Date(v).toLocaleString() : '—',
     },
   ]
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
+import re
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -101,6 +102,13 @@ def _parse_event(event):
     return {"score": score, "rules_hit": rules_hit}
 
 
+def _normalize_pan_filter(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    cleaned = re.sub(r"[^0-9*]", "", value.strip())
+    return cleaned or None
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @router.get("/dashboard", response_model=FraudDashboardOut)
@@ -172,13 +180,22 @@ def fraud_dashboard_breakdown(db: Session = Depends(get_db)):
 def list_alerts(
     status: Optional[str] = Query(None),
     severity: Optional[str] = Query(None),
+    pan: Optional[str] = Query(None, description="PAN filter (supports * wildcard)"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    events = db.query(TransactionEvent).filter(
+    q = db.query(TransactionEvent).filter(
         TransactionEvent.event_type.in_(["FRAUD_DECLINE", "FRAUD_FLAG"])
-    ).order_by(TransactionEvent.created_at.desc()).all()
+    )
+    normalized_pan = _normalize_pan_filter(pan)
+    if normalized_pan:
+        q = q.join(Transaction, Transaction.stan == TransactionEvent.stan)
+        if "*" in normalized_pan:
+            q = q.filter(Transaction.pan.like(normalized_pan.replace("*", "%")))
+        else:
+            q = q.filter(Transaction.pan == normalized_pan)
+    events = q.order_by(TransactionEvent.created_at.desc()).all()
 
     alerts = []
     for event in events:
@@ -561,16 +578,20 @@ def fraud_check(payload: FraudCheckIn, db: Session = Depends(get_db)):
 def flagged_transactions(
     decision: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    pan: Optional[str] = Query(None, description="PAN filter (supports * wildcard)"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
-    events = (
-        db.query(TransactionEvent)
-        .filter(TransactionEvent.event_type.in_(["FRAUD_DECLINE", "FRAUD_FLAG"]))
-        .order_by(TransactionEvent.created_at.desc())
-        .all()
-    )
+    q = db.query(TransactionEvent).filter(TransactionEvent.event_type.in_(["FRAUD_DECLINE", "FRAUD_FLAG"]))
+    normalized_pan = _normalize_pan_filter(pan)
+    if normalized_pan:
+        q = q.join(Transaction, Transaction.stan == TransactionEvent.stan)
+        if "*" in normalized_pan:
+            q = q.filter(Transaction.pan.like(normalized_pan.replace("*", "%")))
+        else:
+            q = q.filter(Transaction.pan == normalized_pan)
+    events = q.order_by(TransactionEvent.created_at.desc()).all()
     results = []
     for event in events:
         ev_decision = "DECLINE" if event.event_type == "FRAUD_DECLINE" else "FLAG"
@@ -584,6 +605,7 @@ def flagged_transactions(
             severity="HIGH" if ev_decision == "DECLINE" else "MEDIUM",
             rule_hits=parsed["rules_hit"], status="OPEN",
             created_at=event.created_at,
+            pan=tx.pan if tx else None,
             terminal_id=tx.terminal_id if tx else None,
             amount=tx.amount if tx else None,
             currency=tx.currency if tx else None,

@@ -77,6 +77,39 @@ public class SwitchListener extends QBeanSupport implements ISORequestListener {
             long amount = parseAmount(request.hasField(4) ? request.getString(4) : "0");
             transactionService.persistIncomingRequest(request, stan, rrn, amount);
 
+            // ---------------- MANDATORY FIELD VALIDATION ----------------
+            String mti = request.getMTI();
+            if ("0200".equals(mti) || "0201".equals(mti)) {
+                if (!request.hasField(2) || request.getString(2) == null || request.getString(2).trim().isEmpty()) {
+                    getLog().warn("REJECTED: 0200 missing mandatory PAN (F2) STAN=" + stan);
+                    ISOMsg resp = buildBaseResponse(request, stan, rrn);
+                    resp.set(39, "30"); // mandatory data missing
+                    safeSend(source, request, resp, "VALIDATION REJECT", "VALIDATION_REJECT");
+                    return true;
+                }
+                if (!request.hasField(4) || request.getString(4) == null || request.getString(4).trim().isEmpty()) {
+                    getLog().warn("REJECTED: 0200 missing mandatory Amount (F4) STAN=" + stan);
+                    ISOMsg resp = buildBaseResponse(request, stan, rrn);
+                    resp.set(39, "30");
+                    safeSend(source, request, resp, "VALIDATION REJECT", "VALIDATION_REJECT");
+                    return true;
+                }
+                if (!request.hasField(11) || request.getString(11) == null || request.getString(11).trim().isEmpty()) {
+                    getLog().warn("REJECTED: 0200 missing mandatory STAN (F11) STAN=" + stan);
+                    ISOMsg resp = buildBaseResponse(request, stan, rrn);
+                    resp.set(39, "30");
+                    safeSend(source, request, resp, "VALIDATION REJECT", "VALIDATION_REJECT");
+                    return true;
+                }
+                if (!request.hasField(41) || request.getString(41) == null || request.getString(41).trim().isEmpty()) {
+                    getLog().warn("REJECTED: 0200 missing mandatory Terminal ID (F41) STAN=" + stan);
+                    ISOMsg resp = buildBaseResponse(request, stan, rrn);
+                    resp.set(39, "30");
+                    safeSend(source, request, resp, "VALIDATION REJECT", "VALIDATION_REJECT");
+                    return true;
+                }
+            }
+
             // ---------------- SECURITY ----------------
             SecurityService.ValidationResult security = securityService.validateRequestSecurity(request);
             if (!security.isValid()) {

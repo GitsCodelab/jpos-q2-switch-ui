@@ -203,11 +203,55 @@ public class TransactionDAO {
         }
     }
 
+    public void updatePanIfMissing(String stan, String rrn, String pan) {
+        if (pan == null || pan.isBlank()) {
+            return;
+        }
+
+        if (!jdbcEnabled) {
+            Transaction tx = transactions.get(buildKey(stan, rrn));
+            if (tx != null && (tx.getPan() == null || tx.getPan().isBlank())) {
+                tx.setPan(pan);
+            }
+            return;
+        }
+
+        try (Connection connection = DatabaseSupport.getConnection()) {
+            updatePanIfMissing(connection, stan, rrn, pan);
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to update transaction PAN", e);
+        }
+    }
+
+    public void updatePanIfMissing(Connection connection, String stan, String rrn, String pan) {
+        if (pan == null || pan.isBlank()) {
+            return;
+        }
+
+        if (!jdbcEnabled) {
+            Transaction tx = transactions.get(buildKey(stan, rrn));
+            if (tx != null && (tx.getPan() == null || tx.getPan().isBlank())) {
+                tx.setPan(pan);
+            }
+            return;
+        }
+
+        String sql = "UPDATE transactions SET pan=?, updated_at=NOW() WHERE stan=? AND rrn=? AND (pan IS NULL OR pan='')";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, pan);
+            ps.setString(2, stan);
+            ps.setString(3, rrn);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Failed to update transaction PAN", e);
+        }
+    }
+
     private void upsertTransaction(Connection connection, Transaction transaction) {
-        String sql = "INSERT INTO transactions (stan, rrn, terminal_id, mti, original_mti, amount, currency, rc, status, final_status, is_reversal, issuer_id, scheme, retry_count, settled, settlement_date, batch_id, created_at, updated_at) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+        String sql = "INSERT INTO transactions (stan, rrn, pan, terminal_id, mti, original_mti, amount, currency, rc, status, final_status, is_reversal, issuer_id, scheme, retry_count, settled, settlement_date, batch_id, created_at, updated_at) "
+            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             + "ON CONFLICT (stan, rrn) DO UPDATE SET "
-            + "terminal_id=EXCLUDED.terminal_id, mti=EXCLUDED.mti, original_mti=EXCLUDED.original_mti, amount=EXCLUDED.amount, "
+            + "pan=COALESCE(EXCLUDED.pan, transactions.pan), terminal_id=EXCLUDED.terminal_id, mti=EXCLUDED.mti, original_mti=EXCLUDED.original_mti, amount=EXCLUDED.amount, "
             + "currency=EXCLUDED.currency, rc=COALESCE(EXCLUDED.rc, transactions.rc), status=EXCLUDED.status, "
             + "final_status=COALESCE(EXCLUDED.final_status, transactions.final_status), is_reversal=EXCLUDED.is_reversal, "
             + "issuer_id=COALESCE(EXCLUDED.issuer_id, transactions.issuer_id), scheme=COALESCE(EXCLUDED.scheme, transactions.scheme), "
@@ -217,27 +261,28 @@ public class TransactionDAO {
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, transaction.getStan());
             ps.setString(2, transaction.getRrn());
-            ps.setString(3, transaction.getTerminalId());
-            ps.setString(4, transaction.getMti());
-            ps.setString(5, transaction.getOriginalMti());
-            ps.setLong(6, transaction.getAmount());
-            ps.setString(7, transaction.getCurrency());
-            ps.setString(8, transaction.getResponseCode());
-            ps.setString(9, transaction.getStatus());
-            ps.setString(10, transaction.getFinalStatus());
-            ps.setBoolean(11, transaction.isReversal());
-            ps.setString(12, transaction.getIssuerId());
-            ps.setString(13, transaction.getScheme());
-            ps.setInt(14, transaction.getRetryCount());
-            ps.setBoolean(15, transaction.isSettled());
+            ps.setString(3, transaction.getPan());
+            ps.setString(4, transaction.getTerminalId());
+            ps.setString(5, transaction.getMti());
+            ps.setString(6, transaction.getOriginalMti());
+            ps.setLong(7, transaction.getAmount());
+            ps.setString(8, transaction.getCurrency());
+            ps.setString(9, transaction.getResponseCode());
+            ps.setString(10, transaction.getStatus());
+            ps.setString(11, transaction.getFinalStatus());
+            ps.setBoolean(12, transaction.isReversal());
+            ps.setString(13, transaction.getIssuerId());
+            ps.setString(14, transaction.getScheme());
+            ps.setInt(15, transaction.getRetryCount());
+            ps.setBoolean(16, transaction.isSettled());
             if (transaction.getSettlementDate() != null) {
-                ps.setDate(16, java.sql.Date.valueOf(transaction.getSettlementDate()));
+                ps.setDate(17, java.sql.Date.valueOf(transaction.getSettlementDate()));
             } else {
-                ps.setDate(16, null);
+                ps.setDate(17, null);
             }
-            ps.setString(17, transaction.getBatchId());
-            ps.setTimestamp(18, Timestamp.from(transaction.getCreatedAt()));
+            ps.setString(18, transaction.getBatchId());
             ps.setTimestamp(19, Timestamp.from(transaction.getCreatedAt()));
+            ps.setTimestamp(20, Timestamp.from(transaction.getCreatedAt()));
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new IllegalStateException("Failed to persist transaction", e);
@@ -245,7 +290,7 @@ public class TransactionDAO {
     }
 
     private Optional<Transaction> findByStanAndRrnJdbc(String stan, String rrn) {
-        String sql = "SELECT mti, stan, rrn, amount, currency, rc, created_at, terminal_id, original_mti, status, final_status, is_reversal, issuer_id, scheme, retry_count, settled, settlement_date, batch_id "
+        String sql = "SELECT mti, stan, rrn, pan, amount, currency, rc, created_at, terminal_id, original_mti, status, final_status, is_reversal, issuer_id, scheme, retry_count, settled, settlement_date, batch_id "
             + "FROM transactions WHERE stan=? AND rrn=? ORDER BY created_at DESC LIMIT 1";
         try (Connection connection = DatabaseSupport.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -259,6 +304,7 @@ public class TransactionDAO {
                 transaction.setMti(rs.getString("mti"));
                 transaction.setStan(rs.getString("stan"));
                 transaction.setRrn(rs.getString("rrn"));
+                transaction.setPan(rs.getString("pan"));
                 transaction.setAmount(rs.getLong("amount"));
                 transaction.setCurrency(rs.getString("currency"));
                 transaction.setResponseCode(rs.getString("rc"));

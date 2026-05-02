@@ -13,6 +13,7 @@ class Transaction(Base):
     id = Column(BigInteger, primary_key=True, index=True)
     stan = Column(String(12), nullable=False)
     rrn = Column(String(12))
+    pan = Column(String(19))
     terminal_id = Column(String(16))
     mti = Column(String(4))
     original_mti = Column(String(4))

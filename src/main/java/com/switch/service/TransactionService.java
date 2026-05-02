@@ -74,6 +74,7 @@ public class TransactionService {
 
     public void persistIncomingRequest(ISOMsg request, String stan, String rrn, long amount) {
         if (transactionDAO.exists(stan, rrn)) {
+            transactionDAO.updatePanIfMissing(stan, rrn, fieldOrNull(request, 2));
             return;
         }
 
@@ -82,6 +83,7 @@ public class TransactionService {
         transaction.setOriginalMti(fieldOrNull(request, 0));
         transaction.setStan(stan);
         transaction.setRrn(rrn);
+        transaction.setPan(fieldOrNull(request, 2));
         transaction.setTerminalId(fieldOrNull(request, 41));
         transaction.setAmount(amount);
         transaction.setCurrency(fieldOrDefault(request, 49, "840"));
@@ -96,6 +98,7 @@ public class TransactionService {
 
         withTransaction(connection -> {
             if (transactionDAO.exists(connection, stan, rrn)) {
+                transactionDAO.updatePanIfMissing(connection, stan, rrn, fieldOrNull(request, 2));
                 return;
             }
             transactionDAO.save(connection, transaction);

@@ -149,6 +149,8 @@ export default function Settlement() {
       dataIndex: 'created_at',
       key: 'created_at',
       width: 150,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
       render: (text) => new Date(text).toLocaleString(),
     },
     {

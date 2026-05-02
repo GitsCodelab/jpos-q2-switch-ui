@@ -85,6 +85,7 @@ ALTER TABLE transactions ADD COLUMN IF NOT EXISTS retry_count INT DEFAULT 0;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS settled BOOLEAN DEFAULT FALSE;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS settlement_date DATE;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS batch_id VARCHAR(32);
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS pan VARCHAR(19);
 
 DO $$
 BEGIN
@@ -134,6 +135,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_scheme ON transactions(scheme);
 CREATE INDEX IF NOT EXISTS idx_transactions_retry_count ON transactions(retry_count);
 CREATE INDEX IF NOT EXISTS idx_transactions_settled ON transactions(settled);
 CREATE INDEX IF NOT EXISTS idx_transactions_batch_id ON transactions(batch_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_pan ON transactions(pan);
 
 -- =========================
 -- 8. VERIFY MIGRATION

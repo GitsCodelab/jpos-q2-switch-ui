@@ -15,6 +15,7 @@ class TransactionOut(_ORM):
     id: int
     stan: str
     rrn: Optional[str] = None
+    pan: Optional[str] = None
     terminal_id: Optional[str] = None
     mti: Optional[str] = None
     original_mti: Optional[str] = None
@@ -316,6 +317,7 @@ class FlaggedTransactionOut(BaseModel):
     alert_id: int
     stan: Optional[str] = None
     rrn: Optional[str] = None
+    pan: Optional[str] = None
     decision: str
     risk_score: int
     severity: str

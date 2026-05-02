@@ -97,4 +97,10 @@ export const fraudAPI = {
   getAuditLog: (params) => api.get('/fraud/audit-log', { params }),
 }
 
+export const testingAPI = {
+  getProfiles: () => api.get('/api/v1/testing/profiles'),
+  send: (payload) => api.post('/api/v1/testing/send', payload),
+  getHistory: (limit = 20) => api.get('/api/v1/testing/history', { params: { limit } }),
+}
+
 export default api

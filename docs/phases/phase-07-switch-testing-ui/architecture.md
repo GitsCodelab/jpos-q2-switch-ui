@@ -40,7 +40,7 @@ The central service layer. All ISO simulator logic lives here; the router stays 
 | Message builder | Merges profile defaults + per-request field overrides |
 | Switch connector | Invokes simulator (Phase 1: subprocess; Phase 2: direct call) |
 | Response parser | Extracts MTI, RC (field 39), STAN (11), RRN (37), timing |
-| History store | Module-level list of last 50 test results (in-memory) |
+| History persistence | PostgreSQL storage |
 
 ### `backend/app/routers/testing.py`
 

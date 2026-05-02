@@ -47,6 +47,15 @@ export default function NetSettlement() {
     },
     { title: 'Settlement Date', dataIndex: 'settlement_date', key: 'settlement_date', width: 140 },
     { title: 'Batch ID', dataIndex: 'batch_id', key: 'batch_id', width: 180 },
+    {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (v) => v ? new Date(v).toLocaleString() : '—',
+    },
   ]
 
   const totalNet = summary.reduce((acc, item) => acc + Number(item.total_net_amount || 0), 0)

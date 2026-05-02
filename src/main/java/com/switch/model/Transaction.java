@@ -8,6 +8,7 @@ public class Transaction {
     private String originalMti;
     private String stan;
     private String rrn;
+    private String pan;
     private String terminalId;
     private long amount;
     private String currency;
@@ -47,6 +48,14 @@ public class Transaction {
 
     public void setRrn(String rrn) {
         this.rrn = rrn;
+    }
+
+    public String getPan() {
+        return pan;
+    }
+
+    public void setPan(String pan) {
+        this.pan = pan;
     }
 
     public long getAmount() {

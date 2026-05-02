@@ -60,6 +60,7 @@ export default function Fraud() {
   const [flaggedTransactions, setFlaggedTransactions] = useState([])
   const [auditLog, setAuditLog] = useState([])
   const [checkResult, setCheckResult] = useState(null)
+  const [panFilter, setPanFilter] = useState('')
 
   const [timelineVisible, setTimelineVisible] = useState(false)
   const [timelineCase, setTimelineCase] = useState(null)
@@ -70,15 +71,15 @@ export default function Fraud() {
   const [checkForm] = Form.useForm()
   const [caseForm] = Form.useForm()
 
-  const loadAll = async () => {
+  const loadAll = async (params = {}) => {
     setLoading(true)
     const requests = [
       fraudAPI.getDashboard(),
-      fraudAPI.getAlerts(),
+      fraudAPI.getAlerts({ pan: params.pan || undefined }),
       fraudAPI.getRules(),
       fraudAPI.getBlacklist(),
       fraudAPI.getCases(),
-      fraudAPI.getFlaggedTransactions(),
+      fraudAPI.getFlaggedTransactions({ pan: params.pan || undefined }),
       fraudAPI.getDashboardTrends(),
       fraudAPI.getDashboardBreakdown(),
       fraudAPI.getAuditLog().catch(() => ({ data: [] })),
@@ -111,6 +112,13 @@ export default function Fraud() {
   }
 
   useEffect(() => { loadAll() }, [])
+
+  const maskPan = (pan) => {
+    const digits = String(pan || '').replace(/\D/g, '')
+    if (!digits) return '-'
+    if (digits.length <= 10) return digits
+    return `${digits.slice(0, 6)}${'*'.repeat(digits.length - 10)}${digits.slice(-4)}`
+  }
 
   const dashboardCards = useMemo(() => {
     if (!dashboard) return []
@@ -259,6 +267,15 @@ export default function Fraud() {
     },
     { title: 'Rules Hit', dataIndex: 'rule_hits', key: 'rule_hits' },
     {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (v) => v ? new Date(v).toLocaleString() : '—',
+    },
+    {
       title: 'Actions',
       key: 'actions',
       width: 380,
@@ -318,6 +335,15 @@ export default function Fraud() {
       width: 80,
       render: (v) => (v ? <Tag color="green">YES</Tag> : <Tag>NO</Tag>),
     },
+    {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (v) => v ? new Date(v).toLocaleString() : '—',
+    },
   ]
 
   const caseColumns = [
@@ -340,6 +366,15 @@ export default function Fraud() {
       render: (v) => v ? <Text ellipsis style={{ maxWidth: 140 }}>{v}</Text> : <Text type="secondary">—</Text>,
     },
     {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (v) => v ? new Date(v).toLocaleString() : '—',
+    },
+    {
       title: 'Actions',
       key: 'actions',
       width: 420,
@@ -359,6 +394,13 @@ export default function Fraud() {
   const flaggedTransactionColumns = [
     { title: 'Alert ID', dataIndex: 'alert_id', key: 'alert_id', width: 90 },
     { title: 'STAN', dataIndex: 'stan', key: 'stan', width: 110 },
+    {
+      title: 'PAN',
+      dataIndex: 'pan',
+      key: 'pan',
+      width: 170,
+      render: (v) => maskPan(v),
+    },
     { title: 'Decision', dataIndex: 'decision', key: 'decision', width: 100 },
     { title: 'Risk Score', dataIndex: 'risk_score', key: 'risk_score', width: 90 },
     {
@@ -371,6 +413,15 @@ export default function Fraud() {
     { title: 'Terminal', dataIndex: 'terminal_id', key: 'terminal_id', width: 120 },
     { title: 'Amount', dataIndex: 'amount', key: 'amount', width: 100 },
     { title: 'Rules', dataIndex: 'rule_hits', key: 'rule_hits' },
+    {
+      title: 'Created At',
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 160,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+      render: (v) => v ? new Date(v).toLocaleString() : '—',
+    },
   ]
 
   const trendColumns = [
@@ -397,6 +448,8 @@ export default function Fraud() {
       dataIndex: 'created_at',
       key: 'created_at',
       width: 170,
+      defaultSortOrder: 'descend',
+      sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
       render: (v) => v ? new Date(v).toLocaleString() : '—',
     },
   ]
@@ -410,6 +463,19 @@ export default function Fraud() {
 
   return (
     <Space direction="vertical" size={16} className="card" style={{ width: '100%' }}>
+      <Card size="small" title="PAN Filter (Transactions + Alerts)">
+        <Space wrap>
+          <Input
+            value={panFilter}
+            onChange={(e) => setPanFilter(e.target.value)}
+            style={{ width: 300 }}
+            placeholder="e.g. 555*5555, *5555, 555*"
+          />
+          <Button type="primary" onClick={() => loadAll({ pan: panFilter })}>Apply</Button>
+          <Button onClick={() => { setPanFilter(''); loadAll({}); }}>Clear</Button>
+        </Space>
+      </Card>
+
       {/* KPI cards */}
       <Card title="Fraud Management" loading={loading}>
         <Row gutter={[16, 16]}>

@@ -2,7 +2,40 @@
 
 Base path: `/api/v1/testing`
 
+## Backend Flow
+
+UI
+ ↓
+FastAPI
+ ↓
+ISO Testing Service
+ ↓
+Simulator
+ ↓
+Store Request/Response in PostgreSQL
+ ↓
+Return Response
 ---
+
+## Suggested Table
+- switch_test_transactions
+| Column        | Purpose              |
+| ------------- | -------------------- |
+| id            | PK                   |
+| profile       | atm/pos/fraud/custom |
+| request_mti   | sent MTI             |
+| request_json  | all request fields   |
+| response_mti  | response MTI         |
+| response_json | all response fields  |
+| rc            | response code        |
+| stan          | field 11             |
+| rrn           | field 37             |
+| elapsed_ms    | latency              |
+| success       | bool                 |
+| switch_host   | useful later         |
+| created_by    | operator             |
+| created_at    | timestamp            |
+and consilder all iso message field must be stored in db
 
 ## GET /api/v1/testing/profiles
 
@@ -165,7 +198,7 @@ Sends a single ISO 8583 message to the jPOS switch and returns the parsed respon
 
 ## GET /api/v1/testing/history
 
-Returns the last N test transactions sent in this session (in-memory, resets on service restart).
+Returns persisted test transactions from PostgreSQL
 
 **Auth:** Bearer token required
 
