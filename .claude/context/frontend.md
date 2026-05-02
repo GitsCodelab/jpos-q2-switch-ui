@@ -1,4 +1,4 @@
-# jPOS Banking UI - Frontend
+# jPOS Banking UI - Frontend Context
 
 React + Ant Design frontend for the jPOS Core Banking Dashboard with SAP UI5 (Fiori) styling.
 

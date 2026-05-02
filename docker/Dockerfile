@@ -2,23 +2,21 @@ FROM eclipse-temurin:25-jdk
 
 WORKDIR /app
 
-COPY fg.crt /usr/local/share/ca-certificates/
-RUN update-ca-certificates
-
-RUN keytool -importcert \
-    -keystore $JAVA_HOME/lib/security/cacerts \
-    -storepass changeit \
-    -noprompt \
-    -alias fortigate \
-    -file /usr/local/share/ca-certificates/fg.crt
-
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends maven \
+    && apt-get install -y --no-install-recommends maven ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Trust corporate SSL inspection certificate for Maven/JDK HTTPS downloads.
+COPY certs/FG-SSL-INSPECTION.cer /usr/local/share/ca-certificates/FG-SSL-INSPECTION.crt
+RUN update-ca-certificates \
+    && keytool -importcert -noprompt \
+        -alias fg-ssl-inspection \
+        -file /usr/local/share/ca-certificates/FG-SSL-INSPECTION.crt \
+        -cacerts -storepass changeit
 
 COPY pom.xml /app/pom.xml
 COPY src /app/src
-COPY cfg /app/cfg
+# COPY cfg /app/cfg
 COPY deploy /app/deploy
 
 RUN mkdir -p /app/logs

@@ -11,6 +11,9 @@ package-lock.json
 .cp.txt
 
 
+
+dependency-reduced-pom.xml
+
 # Python
 __pycache__/
 *.pyc
