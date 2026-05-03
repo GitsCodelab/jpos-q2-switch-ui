@@ -99,15 +99,15 @@ export default function App() {
       icon: <AlertOutlined />,
       label: 'Fraud',
     },
-    {
-      key: 'switch-testing',
-      icon: <ExperimentOutlined />,
-      label: 'Switch Testing',
-    },
+    
     {
       key: 'validation',
       icon: <SafetyCertificateOutlined />,
       label: 'Validation',
+    },{
+      key: 'switch-testing',
+      icon: <ExperimentOutlined />,
+      label: 'Switch Testing',
     },
   ]
 
